@@ -1,0 +1,36 @@
+{
+  "geode": "5.11.2",
+  "gd": {
+    "win": "2.208",
+    "android": "2.208",
+    "mac": "2.208",
+    "ios": "2.208"
+  },
+  "version": "v1.0.0",
+  "id": "Kaizmm",
+  "name": "FaQMaybe",
+  "developer": "YourName",
+  "description": "A clean, cross-platform mod menu for Geometry Dash.",
+  "repository": "https://github.com/YourName/VantaMenu",
+  "issues": {
+    "info": "Report bugs on GitHub.",
+    "url": "https://github.com/YourName/VantaMenu/issues"
+  },
+  "tags": ["interface", "utility", "customization"],
+  "settings": {
+    "menu-opacity": {
+      "type": "float",
+      "name": "Menu Opacity",
+      "description": "Opacity of the menu window.",
+      "default": 0.9,
+      "min": 0.2,
+      "max": 1.0,
+      "control": { "slider": true }
+    },
+    "open-on-start": {
+      "type": "bool",
+      "name": "Open on Startup",
+      "default": false
+    }
+  }
+}
