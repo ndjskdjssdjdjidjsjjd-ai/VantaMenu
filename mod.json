@@ -1,14 +1,14 @@
 {
   "geode": "5.11.2",
   "gd": {
-    "win": "2.208",
-    "android": "2.208",
-    "mac": "2.208",
-    "ios": "2.208"
+    "win": "2.2081",
+    "android": "2.2081",
+    "mac": "2.2081",
+    "ios": "2.2081"
   },
   "version": "v1.0.0",
-  "id": "Kaizmm",
-  "name": "FaQMaybe",
+  "id": "yourname.vantamenu",
+  "name": "VantaMenu",
   "developer": "YourName",
   "description": "A clean, cross-platform mod menu for Geometry Dash.",
   "repository": "https://github.com/YourName/VantaMenu",
