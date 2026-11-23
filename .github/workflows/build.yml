@@ -15,7 +15,7 @@ jobs:
           - name: Windows
             os: windows-2022
           - name: macOS
-            os: macos-latest
+            os: macos-15-intel
           - name: Android32
             os: ubuntu-latest
             target: Android32
@@ -37,13 +37,6 @@ jobs:
           combine: true
           target: ${{ matrix.config.target }}
 
-      - name: Upload platform build
-        uses: actions/upload-artifact@v4
-        with:
-          name: VantaMenu-${{ matrix.config.name }}
-          path: build/*.geode
-          if-no-files-found: warn
-
   package:
     name: Package builds
     runs-on: ubuntu-latest
@@ -55,5 +48,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VantaMenu-All
+          name: VantaMenu
           path: ${{ steps.build.outputs.build-output }}
