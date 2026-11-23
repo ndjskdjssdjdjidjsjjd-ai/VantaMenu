@@ -37,6 +37,13 @@ jobs:
           combine: true
           target: ${{ matrix.config.target }}
 
+      - name: Upload platform build
+        uses: actions/upload-artifact@v4
+        with:
+          name: VantaMenu-${{ matrix.config.name }}
+          path: build/*.geode
+          if-no-files-found: warn
+
   package:
     name: Package builds
     runs-on: ubuntu-latest
@@ -48,5 +55,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Build Output
+          name: VantaMenu-All
           path: ${{ steps.build.outputs.build-output }}
