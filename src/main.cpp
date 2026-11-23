@@ -11,33 +11,41 @@
 
 using namespace geode::prelude;
 
+// load enabled texture packs as early as possible
+$on_mod(Loaded) {
+    vanta::addEnabledPacks();
+}
+
 struct TrailPt {
     CCRect r;
     bool hold;
 };
 
-static void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool dead, bool p2) {
+static void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2) {
     size_t n = pts.size();
-    bool red = vanta::isOn("trail-red") && dead;
-    bool green = vanta::isOn("trail-green");
+    bool inside = vanta::isOn("trail-inside");
+    bool hold = vanta::isOn("trail-hold");
     ccColor4F base = vanta::trailColor(p2);
-    ccColor4F redC = vanta::colorOf("trail-color-death");
-    ccColor4F greenC = vanta::colorOf("trail-color-hold");
+    ccColor4F ins = vanta::colorOf("trail-color-inside");
+    ccColor4F holdC = vanta::colorOf("trail-color-hold");
 
     for (size_t i = 0; i < n; i++) {
         auto const& r = pts[i].r;
-        ccColor4F c = base;
-        if (red) c = redC;
-        else if (green && pts[i].hold) c = greenC;
+        ccColor4F border = base;
+        if (hold && pts[i].hold) border = holdC;
 
-        float a = 0.15f + 0.85f * (float(i + 1) / float(n));
+        float fade = 0.15f + 0.85f * (float(i + 1) / float(n));
+        ccColor4F fill = inside
+            ? ccColor4F{ins.r, ins.g, ins.b, 0.3f * fade}
+            : ccColor4F{0.f, 0.f, 0.f, 0.f};
+
         CCPoint quad[4] = {
             ccp(r.getMinX(), r.getMinY()),
             ccp(r.getMaxX(), r.getMinY()),
             ccp(r.getMaxX(), r.getMaxY()),
             ccp(r.getMinX(), r.getMaxY())
         };
-        node->drawPolygon(quad, 4, ccColor4F{0.f, 0.f, 0.f, 0.f}, 0.5f, ccColor4F{c.r, c.g, c.b, a});
+        node->drawPolygon(quad, 4, fill, 0.5f, ccColor4F{border.r, border.g, border.b, fade});
     }
 }
 
@@ -84,7 +92,7 @@ class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
             // during playback, ignore real taps so they can't mess up the run
             if (mode == 2 && !vanta::g_injecting) return;
 
-            // holding state for the green trail layer
+            // holding state for the hold trail
             if (button == 1) {
                 if (isPlayer1) vanta::g_hold1 = down;
                 else vanta::g_hold2 = down;
@@ -304,8 +312,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     while (f->trail2.size() > maxLen) f->trail2.pop_front();
                 }
                 if (vanta::isOn("show-hitbox") || dead) {
-                    drawTrail(f->trailNode, f->trail1, dead, false);
-                    drawTrail(f->trailNode, f->trail2, dead, true);
+                    drawTrail(f->trailNode, f->trail1, false);
+                    drawTrail(f->trailNode, f->trail2, true);
                 }
             } else {
                 f->trail1.clear();
