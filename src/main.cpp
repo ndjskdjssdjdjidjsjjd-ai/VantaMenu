@@ -2,6 +2,7 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/modify/GameManager.hpp>
 #include <deque>
@@ -44,12 +45,50 @@ class $modify(VantaPauseLayer, PauseLayer) {
     }
 };
 
+// ---------- Macro bot + CPS (input level) ----------
+class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
+    void handleButton(bool down, int button, bool isPlayer1) {
+        auto pl = PlayLayer::get();
+        if (pl && static_cast<GJBaseGameLayer*>(pl) == this) {
+            int mode = vanta::macroMode();
+
+            // during playback, ignore real taps so they can't mess up the run
+            if (mode == 2 && !vanta::g_injecting) return;
+
+            if (down) vanta::registerClick();
+
+            if (mode == 1 && !vanta::g_injecting) {
+                vanta::g_macro.push_back({vanta::g_frame, down, button, isPlayer1});
+            }
+        }
+        GJBaseGameLayer::handleButton(down, button, isPlayer1);
+    }
+
+    void processCommands(float dt) {
+        auto pl = PlayLayer::get();
+        if (pl && static_cast<GJBaseGameLayer*>(pl) == this) {
+            if (vanta::macroMode() == 2) {
+                while (vanta::g_playIndex < vanta::g_macro.size() &&
+                       vanta::g_macro[vanta::g_playIndex].frame <= vanta::g_frame) {
+                    auto a = vanta::g_macro[vanta::g_playIndex++];
+                    vanta::g_injecting = true;
+                    this->handleButton(a.down, a.button, a.p1);
+                    vanta::g_injecting = false;
+                }
+            }
+            GJBaseGameLayer::processCommands(dt);
+            vanta::g_frame++;
+            return;
+        }
+        GJBaseGameLayer::processCommands(dt);
+    }
+};
+
 class $modify(VantaPlayLayer, PlayLayer) {
     struct Fields {
         CCLabelBMFont* label = nullptr;
         CCDrawNode* trailNode = nullptr;
         CCDrawNode* dot = nullptr;
-        CCMenu* hbMenu = nullptr;
         std::deque<CCRect> trail1;
         std::deque<CCRect> trail2;
         float time = 0.f;
@@ -60,31 +99,19 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
     void setupHasCompleted() {
         PlayLayer::setupHasCompleted();
-        auto win = CCDirector::get()->getWinSize();
 
-        // labels
         m_fields->label = CCLabelBMFont::create("", "bigFont.fnt");
         m_uiLayer->addChild(m_fields->label, 100);
 
-        // cheat indicator dot
         m_fields->dot = CCDrawNode::create();
         m_uiLayer->addChild(m_fields->dot, 100);
 
-        // hitbox trail (moves with the level)
         m_fields->trailNode = CCDrawNode::create();
         m_objectLayer->addChild(m_fields->trailNode, 1000);
 
-        // on-screen hitbox button
-        auto menu = CCMenu::create();
-        auto spr = ButtonSprite::create("Hitbox", 55, true, "bigFont.fnt", "GJ_button_04.png", 22.f, .5f);
-        auto btn = CCMenuItemExt::createSpriteExtra(spr, [](CCMenuItemSpriteExtra*) {
-            bool now = !vanta::isOn("show-hitbox");
-            Mod::get()->setSavedValue<bool>("show-hitbox", now);
-        });
-        menu->addChild(btn);
-        menu->setPosition({win.width - 40.f, win.height / 2.f});
-        m_uiLayer->addChild(menu, 100);
-        m_fields->hbMenu = menu;
+        if (vanta::macroMode() == 2) {
+            vanta::loadMacro(m_level->m_levelID.value());
+        }
     }
 
     void resetLevel() {
@@ -92,6 +119,20 @@ class $modify(VantaPlayLayer, PlayLayer) {
         m_fields->trail1.clear();
         m_fields->trail2.clear();
         m_fields->time = 0.f;
+
+        vanta::g_frame = 0;
+        vanta::g_playIndex = 0;
+        if (vanta::macroMode() == 1) {
+            vanta::g_macro.clear();
+        }
+    }
+
+    void levelComplete() {
+        // recorded run gets saved when you beat the level
+        if (vanta::macroMode() == 1) {
+            vanta::saveMacro(m_level->m_levelID.value());
+        }
+        PlayLayer::levelComplete();
     }
 
     void destroyPlayer(PlayerObject* player, GameObject* obj) {
@@ -103,6 +144,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         PlayLayer::postUpdate(dt);
         auto f = m_fields.self();
         auto win = CCDirector::get()->getWinSize();
+        bool dead = m_player1->m_isDead;
 
         // hide player
         if (vanta::isOn("hide-player")) {
@@ -128,37 +170,40 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
         }
 
-        // hitbox button visibility
-        if (f->hbMenu) f->hbMenu->setVisible(vanta::isOn("hitbox-button"));
-
-        // hitbox trail
+        // hitbox trail: records while alive, shows with hitboxes AND on death
         if (f->trailNode) {
             f->trailNode->clear();
             if (vanta::isOn("hitbox-trail")) {
-                size_t maxLen = (size_t)vanta::trailLength();
-                f->trail1.push_back(m_player1->getObjectRect());
-                if (m_player2 && m_player2->isVisible()) {
-                    f->trail2.push_back(m_player2->getObjectRect());
+                if (!dead) {
+                    size_t maxLen = (size_t)vanta::trailLength();
+                    f->trail1.push_back(m_player1->getObjectRect());
+                    if (m_player2 && m_player2->isVisible()) {
+                        f->trail2.push_back(m_player2->getObjectRect());
+                    }
+                    while (f->trail1.size() > maxLen) f->trail1.pop_front();
+                    while (f->trail2.size() > maxLen) f->trail2.pop_front();
                 }
-                while (f->trail1.size() > maxLen) f->trail1.pop_front();
-                while (f->trail2.size() > maxLen) f->trail2.pop_front();
-                drawRects(f->trailNode, f->trail1, ccColor4F{0.3f, 0.9f, 1.f, 1.f});
-                drawRects(f->trailNode, f->trail2, ccColor4F{1.f, 0.4f, 0.8f, 1.f});
+                if (vanta::isOn("show-hitbox") || dead) {
+                    drawRects(f->trailNode, f->trail1, ccColor4F{0.3f, 0.9f, 1.f, 1.f});
+                    drawRects(f->trailNode, f->trail2, ccColor4F{1.f, 0.4f, 0.8f, 1.f});
+                }
             } else {
                 f->trail1.clear();
                 f->trail2.clear();
             }
         }
 
-        // cheat indicator
+        // cheat indicator (top-left now)
         if (f->dot) {
             f->dot->clear();
             if (vanta::isOn("cheat-indicator")) {
-                bool cheating = vanta::isOn("noclip") || vanta::g_speed != 1.f;
+                bool cheating = vanta::isOn("noclip")
+                    || vanta::g_speed != 1.f
+                    || vanta::macroMode() != 0;
                 ccColor4F col = cheating
                     ? ccColor4F{1.f, 0.2f, 0.2f, 1.f}
                     : ccColor4F{0.2f, 1.f, 0.4f, 1.f};
-                f->dot->drawDot(ccp(win.width - 12.f, win.height - 12.f), 4.f, col);
+                f->dot->drawDot(ccp(12.f, win.height - 12.f), 4.f, col);
             }
         }
 
@@ -173,9 +218,18 @@ class $modify(VantaPlayLayer, PlayLayer) {
             } else {
                 std::string s;
                 if (vanta::isOn("label-fps")) s += fmt::format("FPS: {}\n", (int)f->fps);
+                if (vanta::isOn("label-cps")) s += fmt::format("CPS: {}\n", vanta::cps());
                 if (vanta::isOn("label-time")) s += fmt::format("Time: {:.2f}s\n", f->time);
                 if (vanta::isOn("label-attempt")) s += fmt::format("Attempt: {}\n", (int)m_attempts);
                 if (vanta::isOn("label-percent")) s += fmt::format("Percent: {:.2f}%\n", this->getCurrentPercent());
+                if (vanta::isOn("label-macro")) {
+                    int mode = vanta::macroMode();
+                    if (mode == 1) {
+                        s += fmt::format("Macro: Recording ({})\n", vanta::g_macro.size());
+                    } else if (mode == 2) {
+                        s += fmt::format("Macro: Playing {}/{}\n", vanta::g_playIndex, vanta::g_macro.size());
+                    }
+                }
 
                 f->label->setVisible(true);
                 f->label->setString(s.c_str());
@@ -189,7 +243,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     case 1: // top right
                         f->label->setAnchorPoint({1.f, 1.f});
                         f->label->setAlignment(kCCTextAlignmentRight);
-                        f->label->setPosition({win.width - 24.f, win.height - pad});
+                        f->label->setPosition({win.width - pad, win.height - pad});
                         break;
                     case 2: // bottom left
                         f->label->setAnchorPoint({0.f, 0.f});
@@ -201,10 +255,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
                         f->label->setAlignment(kCCTextAlignmentRight);
                         f->label->setPosition({win.width - pad, pad});
                         break;
-                    default: // top left
+                    default: // top left (shifted right to clear the indicator dot)
                         f->label->setAnchorPoint({0.f, 1.f});
                         f->label->setAlignment(kCCTextAlignmentLeft);
-                        f->label->setPosition({pad, win.height - pad});
+                        f->label->setPosition({22.f, win.height - pad});
                         break;
                 }
             }
