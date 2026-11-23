@@ -13,7 +13,7 @@ using namespace geode::prelude;
 
 namespace vanta {
 
-enum class Kind { Toggle, Cycle, Number, Color };
+enum class Kind { Toggle, Cycle, Number, Color, Button };
 
 struct Feature {
     std::string id;
@@ -21,15 +21,22 @@ struct Feature {
     std::string desc;
     std::string category;
     Kind kind = Kind::Toggle;
-    std::vector<std::string> options;
+    std::vector<std::string> options; // button: options[0] = button label
     int defIndex = 0; // toggle: 1 = on | cycle: default option | color: packed 0xRRGGBB
     std::function<void()> apply;
     float defNum = 0.f; // number only
     float minNum = 0.f;
     float maxNum = 0.f;
+    std::function<void()> action; // button only
 };
 
 inline std::vector<Feature> const& features();
+
+inline bool g_booting = false;
+inline void (*g_bgRefresh)() = nullptr;
+inline void bgRefresh() {
+    if (g_bgRefresh) g_bgRefresh();
+}
 
 inline Feature const* findFeature(std::string const& id) {
     for (auto const& f : features()) {
@@ -66,6 +73,16 @@ inline void setNum(Feature const& f, float v) {
     Mod::get()->setSavedValue<float>(f.id, v);
 }
 
+inline ccColor4F colorOf(std::string const& id) {
+    int c = getIndex(id);
+    return ccColor4F{
+        ((c >> 16) & 255) / 255.f,
+        ((c >> 8) & 255) / 255.f,
+        (c & 255) / 255.f,
+        1.f
+    };
+}
+
 // ---------- speed ----------
 inline float g_speed = 1.f;
 
@@ -92,12 +109,13 @@ inline int trailLength() {
 }
 
 inline ccColor4F trailColor(bool p2) {
-    int c = getIndex("trail-color");
-    float r = ((c >> 16) & 255) / 255.f;
-    float g = ((c >> 8) & 255) / 255.f;
-    float b = (c & 255) / 255.f;
-    return p2 ? ccColor4F{g, b, r, 1.f} : ccColor4F{r, g, b, 1.f};
+    auto c = colorOf("trail-color");
+    return p2 ? ccColor4F{c.g, c.b, c.r, 1.f} : c;
 }
+
+// ---------- holding state (for green layer) ----------
+inline bool g_hold1 = false;
+inline bool g_hold2 = false;
 
 // ---------- label customizers ----------
 inline float labelScale() {
@@ -118,6 +136,25 @@ inline ccColor3B labelColor() {
     };
     int i = getIndex("label-color");
     return v[(i >= 0 && i < 5) ? i : 0];
+}
+
+// ---------- graphics overlays ----------
+inline GLubyte dimAlpha() {
+    static GLubyte const v[] = {0, 64, 128, 191};
+    int i = getIndex("gfx-brightness");
+    return v[(i >= 0 && i < 4) ? i : 0];
+}
+
+inline ccColor3B tintColor() {
+    static ccColor3B const v[] = {
+        {0, 0, 0}, {255, 150, 40}, {60, 140, 255}, {255, 90, 200}, {60, 255, 120}
+    };
+    int i = getIndex("gfx-tint");
+    return v[(i >= 0 && i < 5) ? i : 0];
+}
+
+inline GLubyte tintAlpha() {
+    return getIndex("gfx-tint") == 0 ? 0 : 50;
 }
 
 // ---------- CPS ----------
@@ -185,7 +222,11 @@ inline std::vector<Feature> const& features() {
         {"hitbox-trail", "Hitbox Trail", "Shows with hitboxes and on death.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
             100.f, 1.f, 2000.f},
-        {"trail-color", "Trail Color", "Pick any color for the trail.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
+        {"trail-color", "Trail Color", "Normal trail color.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
+        {"trail-red", "Red Layer", "Trail turns red when you die.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
+        {"trail-color-death", "Red Layer Color", "Color used on death.", "Hitbox", Kind::Color, {}, 0xFF2828, nullptr},
+        {"trail-green", "Green Layer", "Trail turns green while holding.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
+        {"trail-color-hold", "Green Layer Color", "Color used while holding.", "Hitbox", Kind::Color, {}, 0x32FF50, nullptr},
 
         // ---------- Labels ----------
         {"labels", "Labels", "Master switch for all labels.", "Labels", Kind::Toggle, {}, 1, nullptr},
@@ -212,13 +253,45 @@ inline std::vector<Feature> const& features() {
         {"speed-value", "Speed Changer", "Game speed, type any number.", "Macro", Kind::Number, {}, 0,
             []{ applySpeed(); }, 1.f, 0.05f, 10.f},
 
-        // ---------- Global ----------
-        {"cheat-indicator", "Cheat Indicator", "Dot: green = clean, red = cheating.", "Global", Kind::Toggle, {}, 1, nullptr},
-        {"fps-changer", "FPS Changer", "Type your FPS (0 = off).", "Global", Kind::Number, {}, 0,
+        // ---------- Graphics ----------
+        {"gfx-ldm", "Low Detail Mode", "Turns the game's LDM on or off.", "Graphics", Kind::Toggle, {}, 0,
+            []{
+                if (g_booting) return;
+                GameManager::get()->setGameVariable("0042", isOn("gfx-ldm"));
+            }},
+        {"auto-ldm", "Auto LDM", "LDM on for levels that support it.", "Graphics", Kind::Toggle, {}, 0, nullptr},
+        {"gfx-brightness", "Brightness", "Darken the level view.", "Graphics", Kind::Cycle,
+            {"Normal", "-25%", "-50%", "-75%"}, 0, nullptr},
+        {"gfx-tint", "Screen Tint", "Color filter over the level.", "Graphics", Kind::Cycle,
+            {"None", "Warm", "Cool", "Pink", "Green"}, 0, nullptr},
+        {"fps-changer", "FPS Changer", "Type your FPS (0 = off).", "Graphics", Kind::Number, {}, 0,
             []{ applyFps(); }, 0.f, 0.f, 1000.f},
-        {"unlock-all", "Unlock All Icons", "Every icon and color unlocked.", "Global", Kind::Toggle, {}, 0, nullptr},
-        {"fps", "Show Stats", "Shows the built-in stats counter.", "Global", Kind::Toggle, {}, 0,
+        {"fps", "Show Stats", "Shows the built-in stats counter.", "Graphics", Kind::Toggle, {}, 0,
             []{ CCDirector::get()->setDisplayStats(isOn("fps")); }},
+
+        // ---------- Background ----------
+        {"bg-theme", "Menu Background", "Blossom = cherry blossom.", "Background", Kind::Cycle,
+            {"None", "Fire", "Winter", "Spring", "Summer", "Blossom", "Aurora", "Stars", "Rain"}, 0,
+            []{ bgRefresh(); }},
+        {"bg-speed", "Animation Speed", "How fast the background moves.", "Background", Kind::Cycle,
+            {"0.5x", "1x", "2x"}, 1, []{ bgRefresh(); }},
+        {"bg-density", "Effect Density", "How many particles are drawn.", "Background", Kind::Cycle,
+            {"Low", "Medium", "High"}, 1, []{ bgRefresh(); }},
+
+        // ---------- Global ----------
+        {"cheat-indicator", "Cheat Indicator", "Circle: green = clean, red = cheating.", "Global", Kind::Toggle, {}, 1, nullptr},
+        {"disable-cheats", "Disable All Cheats", "Noclip, speed, macro, unlock all.", "Global", Kind::Button,
+            {"Disable"}, 0, nullptr, 0.f, 0.f, 0.f,
+            []{
+                auto m = Mod::get();
+                m->setSavedValue<bool>("noclip", false);
+                m->setSavedValue<bool>("unlock-all", false);
+                m->setSavedValue<int>("macro-mode", 0);
+                m->setSavedValue<float>("speed-value", 1.f);
+                applySpeed();
+            }},
+        {"no-newbest-orbs", "No New Best Orbs", "Hides the orb reward on new best.", "Global", Kind::Toggle, {}, 0, nullptr},
+        {"unlock-all", "Unlock All Icons", "Every icon and color unlocked.", "Global", Kind::Toggle, {}, 0, nullptr},
     };
     return list;
 }
@@ -234,9 +307,11 @@ inline std::vector<std::string> categories() {
 }
 
 inline void applyAll() {
+    g_booting = true;
     for (auto const& f : features()) {
         if (f.apply) f.apply();
     }
+    g_booting = false;
 }
 
 }
