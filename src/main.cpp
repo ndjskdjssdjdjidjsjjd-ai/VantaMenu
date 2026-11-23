@@ -95,6 +95,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
         float fps = 60.f;
         bool hidden = false;
         bool hbWasOn = false;
+
+        // noclip stats
+        int ncFrames = 0;
+        int ncHitFrames = 0;
+        int ncDeaths = 0;
+        bool hitNow = false;
+        bool hitPrev = false;
     };
 
     void setupHasCompleted() {
@@ -116,9 +123,15 @@ class $modify(VantaPlayLayer, PlayLayer) {
 
     void resetLevel() {
         PlayLayer::resetLevel();
-        m_fields->trail1.clear();
-        m_fields->trail2.clear();
-        m_fields->time = 0.f;
+        auto f = m_fields.self();
+        f->trail1.clear();
+        f->trail2.clear();
+        f->time = 0.f;
+        f->ncFrames = 0;
+        f->ncHitFrames = 0;
+        f->ncDeaths = 0;
+        f->hitNow = false;
+        f->hitPrev = false;
 
         vanta::g_frame = 0;
         vanta::g_playIndex = 0;
@@ -136,7 +149,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
     }
 
     void destroyPlayer(PlayerObject* player, GameObject* obj) {
-        if (vanta::isOn("noclip") && obj != m_anticheatSpike) return;
+        if (vanta::isOn("noclip") && obj != m_anticheatSpike) {
+            m_fields->hitNow = true; // would have died here
+            return;
+        }
         PlayLayer::destroyPlayer(player, obj);
     }
 
@@ -145,6 +161,17 @@ class $modify(VantaPlayLayer, PlayLayer) {
         auto f = m_fields.self();
         auto win = CCDirector::get()->getWinSize();
         bool dead = m_player1->m_isDead;
+
+        // noclip stats
+        if (vanta::isOn("noclip")) {
+            f->ncFrames++;
+            if (f->hitNow) {
+                f->ncHitFrames++;
+                if (!f->hitPrev) f->ncDeaths++;
+            }
+        }
+        f->hitPrev = f->hitNow;
+        f->hitNow = false;
 
         // hide player
         if (vanta::isOn("hide-player")) {
@@ -184,8 +211,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     while (f->trail2.size() > maxLen) f->trail2.pop_front();
                 }
                 if (vanta::isOn("show-hitbox") || dead) {
-                    drawRects(f->trailNode, f->trail1, ccColor4F{0.3f, 0.9f, 1.f, 1.f});
-                    drawRects(f->trailNode, f->trail2, ccColor4F{1.f, 0.4f, 0.8f, 1.f});
+                    drawRects(f->trailNode, f->trail1, vanta::trailColor(false));
+                    drawRects(f->trailNode, f->trail2, vanta::trailColor(true));
                 }
             } else {
                 f->trail1.clear();
@@ -222,6 +249,19 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 if (vanta::isOn("label-time")) s += fmt::format("Time: {:.2f}s\n", f->time);
                 if (vanta::isOn("label-attempt")) s += fmt::format("Attempt: {}\n", (int)m_attempts);
                 if (vanta::isOn("label-percent")) s += fmt::format("Percent: {:.2f}%\n", this->getCurrentPercent());
+
+                if (vanta::isOn("noclip")) {
+                    if (vanta::isOn("label-nc-acc")) {
+                        float acc = f->ncFrames > 0
+                            ? 100.f * float(f->ncFrames - f->ncHitFrames) / float(f->ncFrames)
+                            : 100.f;
+                        s += fmt::format("NC Acc: {:.2f}%\n", acc);
+                    }
+                    if (vanta::isOn("label-nc-deaths")) {
+                        s += fmt::format("NC Deaths: {}\n", f->ncDeaths);
+                    }
+                }
+
                 if (vanta::isOn("label-macro")) {
                     int mode = vanta::macroMode();
                     if (mode == 1) {
