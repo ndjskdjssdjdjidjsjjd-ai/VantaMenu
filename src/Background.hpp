@@ -3,6 +3,7 @@
 #include "BgThemes1.hpp"
 #include "BgThemes2.hpp"
 #include "BgThemes3.hpp"
+#include "BgThemes4.hpp"
 
 namespace vanta {
 
@@ -71,6 +72,7 @@ protected:
         for (auto& p : m_s.p) spawn(m_s, p, true);
         m_s.fx.clear();
         m_s.bolt.clear();
+        m_s.bolt2.clear();
         m_s.flash = 0.f;
         m_s.draw->clear();
     }
@@ -88,11 +90,11 @@ protected:
             case 1: themeFire(m_s, dt, wind); break;
             case 2: themeWinter(m_s, dt, wind); break;
             case 3: themeSpring(m_s, dt, wind); break;
-            case 4: themeSummer(m_s, dt); break;
+            case 4: themeSummer(m_s, dt, wind); break;
             case 5: themeBlossom(m_s, dt, wind); break;
             case 6: themeAurora(m_s); break;
             case 7: themeStars(m_s, dt); break;
-            case 8: themeRain(m_s, dt); break;
+            case 8: themeRain(m_s, dt, wind); break;
             default: break;
         }
     }
