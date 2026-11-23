@@ -63,6 +63,11 @@ protected:
         m_mainLayer->addChild(m_scroll);
     }
 
+    static std::string numText(float v) {
+        if (v <= 0.f) return "";
+        return fmt::format("{}", v);
+    }
+
     CCNode* makeRow(vanta::Feature const& f, float w) {
         auto row = CCNode::create();
         row->setContentSize({w, 38.f});
@@ -98,7 +103,8 @@ protected:
             toggle->toggle(vanta::isOn(f.id));
             toggle->setPosition({w - 26.f, 19.f});
             menu->addChild(toggle);
-        } else {
+        }
+        else if (f.kind == vanta::Kind::Cycle) {
             int idx = vanta::getIndex(f.id);
             auto spr = ButtonSprite::create(f.options[idx].c_str(), 80, true, "bigFont.fnt", "GJ_button_04.png", 24.f, .5f);
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [f, spr](CCMenuItemSpriteExtra*) {
@@ -109,6 +115,52 @@ protected:
                 if (f.apply) f.apply();
             });
             btn->setPosition({w - 55.f, 19.f});
+            menu->addChild(btn);
+        }
+        else if (f.kind == vanta::Kind::Number) {
+            auto input = TextInput::create(75.f, "off", "bigFont.fnt");
+            input->setCommonFilter(CommonFilter::Float);
+            input->setScale(.8f);
+            input->setPosition({w - 52.f, 19.f});
+            input->setString(numText(vanta::getNum(f.id)), false);
+            input->setCallback([f](std::string const& s) {
+                if (s.empty()) return;
+                float v = (float)std::strtod(s.c_str(), nullptr);
+                vanta::setNum(f, v);
+                if (f.apply) f.apply();
+            });
+            row->addChild(input);
+        }
+        else if (f.kind == vanta::Kind::Color) {
+            int packed = vanta::getIndex(f.id);
+            auto swatch = CCScale9Sprite::create("square02b_001.png");
+            swatch->setContentSize({22.f, 22.f});
+            swatch->setColor({
+                (GLubyte)((packed >> 16) & 255),
+                (GLubyte)((packed >> 8) & 255),
+                (GLubyte)(packed & 255)
+            });
+            swatch->setPosition({w - 100.f, 19.f});
+            row->addChild(swatch);
+
+            auto spr = ButtonSprite::create("Pick", 50, true, "bigFont.fnt", "GJ_button_04.png", 24.f, .5f);
+            auto btn = CCMenuItemExt::createSpriteExtra(spr, [f, swatch](CCMenuItemSpriteExtra*) {
+                int cur = vanta::getIndex(f.id);
+                ccColor4B start = {
+                    (GLubyte)((cur >> 16) & 255),
+                    (GLubyte)((cur >> 8) & 255),
+                    (GLubyte)(cur & 255),
+                    255
+                };
+                auto popup = ColorPickPopup::create(start);
+                popup->setCallback([f, swatch](ccColor4B const& c) {
+                    int p = (c.r << 16) | (c.g << 8) | c.b;
+                    Mod::get()->setSavedValue<int>(f.id, p);
+                    swatch->setColor({c.r, c.g, c.b});
+                });
+                popup->show();
+            });
+            btn->setPosition({w - 45.f, 19.f});
             menu->addChild(btn);
         }
 
