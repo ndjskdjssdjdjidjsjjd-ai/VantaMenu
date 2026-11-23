@@ -8,18 +8,18 @@ protected:
     std::string m_cat;
 
     bool init() {
-        if (!Popup::init(440.f, 250.f)) return false;
+        if (!Popup::init(480.f, 250.f)) return false;
         this->setTitle("VantaMenu");
 
         auto cats = vanta::categories();
         m_cat = cats.empty() ? "" : cats[0];
 
         auto tabs = CCMenu::create();
-        tabs->setContentSize({m_size.width - 30.f, 28.f});
+        tabs->setContentSize({m_size.width - 20.f, 28.f});
         tabs->setPosition({m_size.width / 2.f, m_size.height - 50.f});
-        tabs->setLayout(RowLayout::create()->setGap(4.f));
+        tabs->setLayout(RowLayout::create()->setGap(3.f));
         for (auto const& cat : cats) {
-            auto spr = ButtonSprite::create(cat.c_str(), 56, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .45f);
+            auto spr = ButtonSprite::create(cat.c_str(), 52, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .38f);
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [this, cat](CCMenuItemSpriteExtra*) {
                 m_cat = cat;
                 this->rebuild();
@@ -59,6 +59,21 @@ protected:
             if (f.category != m_cat) continue;
             m_scroll->m_contentLayer->addChild(makeRow(f, w));
         }
+
+        // texture packs found in the packs folder
+        if (m_cat == "Textures") {
+            auto packs = vanta::listPacks();
+            if (packs.empty()) {
+                m_scroll->m_contentLayer->addChild(
+                    baseRow("No packs found", "Open the packs folder and add a pack folder.", w)
+                );
+            } else {
+                for (auto const& p : packs) {
+                    m_scroll->m_contentLayer->addChild(makePackRow(p, w));
+                }
+            }
+        }
+
         m_scroll->m_contentLayer->updateLayout();
         m_mainLayer->addChild(m_scroll);
     }
@@ -68,7 +83,7 @@ protected:
         return fmt::format("{}", v);
     }
 
-    CCNode* makeRow(vanta::Feature const& f, float w) {
+    CCNode* baseRow(std::string const& n, std::string const& d, float w) {
         auto row = CCNode::create();
         row->setContentSize({w, 38.f});
 
@@ -79,18 +94,42 @@ protected:
         bg->setPosition({w / 2.f, 19.f});
         row->addChild(bg);
 
-        auto name = CCLabelBMFont::create(f.name.c_str(), "bigFont.fnt");
+        auto name = CCLabelBMFont::create(n.c_str(), "bigFont.fnt");
         name->setScale(.45f);
         name->setAnchorPoint({0.f, .5f});
         name->setPosition({10.f, 26.f});
         row->addChild(name);
 
-        auto desc = CCLabelBMFont::create(f.desc.c_str(), "chatFont.fnt");
+        auto desc = CCLabelBMFont::create(d.c_str(), "chatFont.fnt");
         desc->setScale(.55f);
         desc->setColor({150, 150, 170});
         desc->setAnchorPoint({0.f, .5f});
         desc->setPosition({10.f, 11.f});
         row->addChild(desc);
+
+        return row;
+    }
+
+    CCNode* makePackRow(std::string const& pack, float w) {
+        auto row = baseRow(pack, "Enable it, then press Reload Textures.", w);
+
+        auto menu = CCMenu::create();
+        menu->setPosition({0.f, 0.f});
+
+        auto toggle = CCMenuItemExt::createTogglerWithStandardSprites(.6f, [pack](CCMenuItemToggler* t) {
+            Mod::get()->setSavedValue<bool>("pack-" + pack, !t->isToggled());
+            vanta::addEnabledPacks();
+        });
+        toggle->toggle(vanta::packOn(pack));
+        toggle->setPosition({w - 26.f, 19.f});
+        menu->addChild(toggle);
+
+        row->addChild(menu);
+        return row;
+    }
+
+    CCNode* makeRow(vanta::Feature const& f, float w) {
+        auto row = baseRow(f.name, f.desc, w);
 
         auto menu = CCMenu::create();
         menu->setPosition({0.f, 0.f});
@@ -169,7 +208,6 @@ protected:
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [this, f](CCMenuItemSpriteExtra*) {
                 if (f.action) f.action();
                 Notification::create("Done!", NotificationIcon::Success)->show();
-                // refresh the rows next frame so toggles show their new state
                 Loader::get()->queueInMainThread([self = Ref<VantaPopup>(this)] {
                     self->rebuild();
                 });
