@@ -1,6 +1,7 @@
 #pragma once
 #include <Geode/Geode.hpp>
 #include <chrono>
+#include <cstdlib>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -12,7 +13,7 @@ using namespace geode::prelude;
 
 namespace vanta {
 
-enum class Kind { Toggle, Cycle };
+enum class Kind { Toggle, Cycle, Number, Color };
 
 struct Feature {
     std::string id;
@@ -21,8 +22,11 @@ struct Feature {
     std::string category;
     Kind kind = Kind::Toggle;
     std::vector<std::string> options;
-    int defIndex = 0; // toggles: 1 = on by default
+    int defIndex = 0; // toggle: 1 = on | cycle: default option | color: packed 0xRRGGBB
     std::function<void()> apply;
+    float defNum = 0.f; // number only
+    float minNum = 0.f;
+    float maxNum = 0.f;
 };
 
 inline std::vector<Feature> const& features();
@@ -50,22 +54,52 @@ inline int getIndex(std::string const& id) {
     return i;
 }
 
+inline float getNum(std::string const& id) {
+    auto f = findFeature(id);
+    float def = f ? f->defNum : 0.f;
+    return Mod::get()->getSavedValue<float>(id, def);
+}
+
+inline void setNum(Feature const& f, float v) {
+    if (v < f.minNum) v = f.minNum;
+    if (v > f.maxNum) v = f.maxNum;
+    Mod::get()->setSavedValue<float>(f.id, v);
+}
+
 // ---------- speed ----------
 inline float g_speed = 1.f;
 
 inline void applySpeed() {
-    static float const values[] = {0.25f, 0.5f, 0.75f, 1.f, 1.5f, 2.f, 3.f};
-    int i = getIndex("speed");
-    g_speed = (i >= 0 && i < 7) ? values[i] : 1.f;
+    float v = getNum("speed-value");
+    if (v < 0.05f) v = 0.05f;
+    if (v > 10.f) v = 10.f;
+    g_speed = v;
 }
 
-// ---------- customizers ----------
+// ---------- FPS ----------
+inline void applyFps() {
+    float fps = getNum("fps-changer");
+    if (fps < 1.f) return; // 0 = leave the game alone
+    CCDirector::get()->setAnimationInterval(1.0 / fps);
+}
+
+// ---------- hitbox trail ----------
 inline int trailLength() {
-    static int const v[] = {20, 50, 100, 200, 400};
-    int i = getIndex("trail-length");
-    return v[(i >= 0 && i < 5) ? i : 2];
+    int n = (int)getNum("trail-length-value");
+    if (n < 1) n = 1;
+    if (n > 2000) n = 2000;
+    return n;
 }
 
+inline ccColor4F trailColor(bool p2) {
+    int c = getIndex("trail-color");
+    float r = ((c >> 16) & 255) / 255.f;
+    float g = ((c >> 8) & 255) / 255.f;
+    float b = (c & 255) / 255.f;
+    return p2 ? ccColor4F{g, b, r, 1.f} : ccColor4F{r, g, b, 1.f};
+}
+
+// ---------- label customizers ----------
 inline float labelScale() {
     static float const v[] = {0.5f, 0.75f, 1.f, 1.25f, 1.5f};
     int i = getIndex("label-scale");
@@ -145,14 +179,13 @@ inline std::vector<Feature> const& features() {
         // ---------- Player ----------
         {"noclip", "Noclip", "Survive every hazard.", "Player", Kind::Toggle, {}, 0, nullptr},
         {"hide-player", "Hide Player", "Makes player 1 invisible.", "Player", Kind::Toggle, {}, 0, nullptr},
-        {"speed", "Speedhack", "Change the game speed.", "Player", Kind::Cycle,
-            {"0.25x", "0.5x", "0.75x", "1x", "1.5x", "2x", "3x"}, 3, []{ applySpeed(); }},
 
         // ---------- Hitbox ----------
         {"show-hitbox", "Show Hitboxes", "Draw hitboxes in levels.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
-        {"hitbox-trail", "Hitbox Trail", "Trail shows with hitboxes and on death.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"trail-length", "Trail Length", "How many frames the trail keeps.", "Hitbox", Kind::Cycle,
-            {"20", "50", "100", "200", "400"}, 2, nullptr},
+        {"hitbox-trail", "Hitbox Trail", "Shows with hitboxes and on death.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
+        {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
+            100.f, 1.f, 2000.f},
+        {"trail-color", "Trail Color", "Pick any color for the trail.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
 
         // ---------- Labels ----------
         {"labels", "Labels", "Master switch for all labels.", "Labels", Kind::Toggle, {}, 1, nullptr},
@@ -161,6 +194,8 @@ inline std::vector<Feature> const& features() {
         {"label-time", "Time Label", "Shows time in the attempt.", "Labels", Kind::Toggle, {}, 0, nullptr},
         {"label-attempt", "Attempt Label", "Shows the attempt number.", "Labels", Kind::Toggle, {}, 0, nullptr},
         {"label-percent", "Percent Label", "Shows level percent.", "Labels", Kind::Toggle, {}, 0, nullptr},
+        {"label-nc-acc", "Noclip Accuracy", "Percent of frames not hitting.", "Labels", Kind::Toggle, {}, 1, nullptr},
+        {"label-nc-deaths", "Noclip Deaths", "Times you would have died.", "Labels", Kind::Toggle, {}, 1, nullptr},
         {"label-pos", "Label Position", "Which corner the labels sit in.", "Labels", Kind::Cycle,
             {"Top Left", "Top Right", "Bottom Left", "Bottom Right"}, 0, nullptr},
         {"label-scale", "Label Scale", "Size of the labels.", "Labels", Kind::Cycle,
@@ -174,9 +209,13 @@ inline std::vector<Feature> const& features() {
         {"macro-mode", "Macro Bot", "Record your run, then replay it.", "Macro", Kind::Cycle,
             {"Off", "Record", "Play"}, 0, nullptr},
         {"label-macro", "Macro Status", "Shows recording/playback status.", "Macro", Kind::Toggle, {}, 1, nullptr},
+        {"speed-value", "Speed Changer", "Game speed, type any number.", "Macro", Kind::Number, {}, 0,
+            []{ applySpeed(); }, 1.f, 0.05f, 10.f},
 
         // ---------- Global ----------
         {"cheat-indicator", "Cheat Indicator", "Dot: green = clean, red = cheating.", "Global", Kind::Toggle, {}, 1, nullptr},
+        {"fps-changer", "FPS Changer", "Type your FPS (0 = off).", "Global", Kind::Number, {}, 0,
+            []{ applyFps(); }, 0.f, 0.f, 1000.f},
         {"unlock-all", "Unlock All Icons", "Every icon and color unlocked.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"fps", "Show Stats", "Shows the built-in stats counter.", "Global", Kind::Toggle, {}, 0,
             []{ CCDirector::get()->setDisplayStats(isOn("fps")); }},
