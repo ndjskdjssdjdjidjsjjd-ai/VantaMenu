@@ -8,7 +8,7 @@ protected:
     std::string m_cat;
 
     bool init() {
-        if (!Popup::init(380.f, 250.f)) return false;
+        if (!Popup::init(440.f, 250.f)) return false;
         this->setTitle("VantaMenu");
 
         auto cats = vanta::categories();
@@ -17,9 +17,9 @@ protected:
         auto tabs = CCMenu::create();
         tabs->setContentSize({m_size.width - 30.f, 28.f});
         tabs->setPosition({m_size.width / 2.f, m_size.height - 50.f});
-        tabs->setLayout(RowLayout::create()->setGap(5.f));
+        tabs->setLayout(RowLayout::create()->setGap(4.f));
         for (auto const& cat : cats) {
-            auto spr = ButtonSprite::create(cat.c_str(), 60, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .5f);
+            auto spr = ButtonSprite::create(cat.c_str(), 56, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .45f);
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [this, cat](CCMenuItemSpriteExtra*) {
                 m_cat = cat;
                 this->rebuild();
@@ -161,6 +161,20 @@ protected:
                 popup->show();
             });
             btn->setPosition({w - 45.f, 19.f});
+            menu->addChild(btn);
+        }
+        else if (f.kind == vanta::Kind::Button) {
+            std::string label = f.options.empty() ? "Run" : f.options[0];
+            auto spr = ButtonSprite::create(label.c_str(), 70, true, "bigFont.fnt", "GJ_button_06.png", 24.f, .5f);
+            auto btn = CCMenuItemExt::createSpriteExtra(spr, [this, f](CCMenuItemSpriteExtra*) {
+                if (f.action) f.action();
+                Notification::create("Done!", NotificationIcon::Success)->show();
+                // refresh the rows next frame so toggles show their new state
+                Loader::get()->queueInMainThread([self = Ref<VantaPopup>(this)] {
+                    self->rebuild();
+                });
+            });
+            btn->setPosition({w - 50.f, 19.f});
             menu->addChild(btn);
         }
 
