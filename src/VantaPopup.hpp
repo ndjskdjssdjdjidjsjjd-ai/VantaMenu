@@ -99,17 +99,16 @@ protected:
             toggle->setPosition({w - 26.f, 19.f});
             menu->addChild(toggle);
         } else {
-            int idx = vanta::getIndex(f.id, f.defIndex);
-            if (idx < 0 || idx >= (int)f.options.size()) idx = f.defIndex;
-            auto spr = ButtonSprite::create(f.options[idx].c_str(), 60, true, "bigFont.fnt", "GJ_button_04.png", 24.f, .5f);
+            int idx = vanta::getIndex(f.id);
+            auto spr = ButtonSprite::create(f.options[idx].c_str(), 80, true, "bigFont.fnt", "GJ_button_04.png", 24.f, .5f);
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [f, spr](CCMenuItemSpriteExtra*) {
-                int cur = vanta::getIndex(f.id, f.defIndex);
+                int cur = vanta::getIndex(f.id);
                 cur = (cur + 1) % (int)f.options.size();
                 Mod::get()->setSavedValue<int>(f.id, cur);
                 spr->setString(f.options[cur].c_str());
                 if (f.apply) f.apply();
             });
-            btn->setPosition({w - 45.f, 19.f});
+            btn->setPosition({w - 55.f, 19.f});
             menu->addChild(btn);
         }
 
