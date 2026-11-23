@@ -7,32 +7,61 @@
 #include <Geode/modify/GameManager.hpp>
 #include <deque>
 #include "VantaPopup.hpp"
+#include "Background.hpp"
 
 using namespace geode::prelude;
 
-static void drawRects(CCDrawNode* node, std::deque<CCRect> const& rects, ccColor4F color) {
-    size_t n = rects.size();
+struct TrailPt {
+    CCRect r;
+    bool hold;
+};
+
+static void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool dead, bool p2) {
+    size_t n = pts.size();
+    bool red = vanta::isOn("trail-red") && dead;
+    bool green = vanta::isOn("trail-green");
+    ccColor4F base = vanta::trailColor(p2);
+    ccColor4F redC = vanta::colorOf("trail-color-death");
+    ccColor4F greenC = vanta::colorOf("trail-color-hold");
+
     for (size_t i = 0; i < n; i++) {
-        auto const& r = rects[i];
+        auto const& r = pts[i].r;
+        ccColor4F c = base;
+        if (red) c = redC;
+        else if (green && pts[i].hold) c = greenC;
+
         float a = 0.15f + 0.85f * (float(i + 1) / float(n));
-        CCPoint pts[4] = {
+        CCPoint quad[4] = {
             ccp(r.getMinX(), r.getMinY()),
             ccp(r.getMaxX(), r.getMinY()),
             ccp(r.getMaxX(), r.getMaxY()),
             ccp(r.getMinX(), r.getMaxY())
         };
-        node->drawPolygon(pts, 4, ccColor4F{0.f, 0.f, 0.f, 0.f}, 0.5f, ccColor4F{color.r, color.g, color.b, a});
+        node->drawPolygon(quad, 4, ccColor4F{0.f, 0.f, 0.f, 0.f}, 0.5f, ccColor4F{c.r, c.g, c.b, a});
     }
 }
 
 class $modify(VantaMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
+
         static bool applied = false;
         if (!applied) {
             applied = true;
             vanta::applyAll();
         }
+
+        // animated background
+        if (auto bg = vanta::Background::create()) {
+            this->addChild(bg, -100);
+            for (auto child : CCArrayExt<CCNode*>(this->getChildren())) {
+                if (typeinfo_cast<MenuGameLayer*>(child)) {
+                    bg->setHideNode(child);
+                    break;
+                }
+            }
+        }
+
         addVantaButton(this);
         return true;
     }
@@ -54,6 +83,12 @@ class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
 
             // during playback, ignore real taps so they can't mess up the run
             if (mode == 2 && !vanta::g_injecting) return;
+
+            // holding state for the green trail layer
+            if (button == 1) {
+                if (isPlayer1) vanta::g_hold1 = down;
+                else vanta::g_hold2 = down;
+            }
 
             if (down) vanta::registerClick();
 
@@ -89,8 +124,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
         CCLabelBMFont* label = nullptr;
         CCDrawNode* trailNode = nullptr;
         CCDrawNode* dot = nullptr;
-        std::deque<CCRect> trail1;
-        std::deque<CCRect> trail2;
+        CCLayerColor* dim = nullptr;
+        CCLayerColor* tint = nullptr;
+        std::deque<TrailPt> trail1;
+        std::deque<TrailPt> trail2;
         float time = 0.f;
         float fps = 60.f;
         bool hidden = false;
@@ -104,17 +141,58 @@ class $modify(VantaPlayLayer, PlayLayer) {
         bool hitPrev = false;
     };
 
+    // Auto LDM: runs before the level loads
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        if (vanta::isOn("auto-ldm") && level) {
+            static bool changed = false;
+            static bool prev = false;
+            auto gm = GameManager::get();
+            if (level->m_lowDetailMode) {
+                if (!changed) {
+                    prev = gm->getGameVariable("0042");
+                    changed = true;
+                }
+                gm->setGameVariable("0042", true);
+            } else if (changed) {
+                gm->setGameVariable("0042", prev);
+                changed = false;
+            }
+        }
+        return PlayLayer::init(level, useReplay, dontCreateObjects);
+    }
+
+    // disables the orb reward on new best
+    void showNewBest(bool newReward, int orbs, int diamonds, bool demonKey, bool gauntlet, bool special) {
+        if (vanta::isOn("no-newbest-orbs")) {
+            newReward = false;
+            orbs = 0;
+            diamonds = 0;
+        }
+        PlayLayer::showNewBest(newReward, orbs, diamonds, demonKey, gauntlet, special);
+    }
+
     void setupHasCompleted() {
         PlayLayer::setupHasCompleted();
+        auto f = m_fields.self();
+        auto win = CCDirector::get()->getWinSize();
 
-        m_fields->label = CCLabelBMFont::create("", "bigFont.fnt");
-        m_uiLayer->addChild(m_fields->label, 100);
+        // graphics overlays (sit behind the UI buttons)
+        f->dim = CCLayerColor::create(ccc4(0, 0, 0, 255), win.width, win.height);
+        f->dim->setOpacity(0);
+        m_uiLayer->addChild(f->dim, -20);
 
-        m_fields->dot = CCDrawNode::create();
-        m_uiLayer->addChild(m_fields->dot, 100);
+        f->tint = CCLayerColor::create(ccc4(255, 255, 255, 255), win.width, win.height);
+        f->tint->setOpacity(0);
+        m_uiLayer->addChild(f->tint, -19);
 
-        m_fields->trailNode = CCDrawNode::create();
-        m_objectLayer->addChild(m_fields->trailNode, 1000);
+        f->label = CCLabelBMFont::create("", "bigFont.fnt");
+        m_uiLayer->addChild(f->label, 100);
+
+        f->dot = CCDrawNode::create();
+        m_uiLayer->addChild(f->dot, 100);
+
+        f->trailNode = CCDrawNode::create();
+        m_objectLayer->addChild(f->trailNode, 1000);
 
         if (vanta::macroMode() == 2) {
             vanta::loadMacro(m_level->m_levelID.value());
@@ -133,6 +211,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
         f->hitNow = false;
         f->hitPrev = false;
 
+        vanta::g_hold1 = false;
+        vanta::g_hold2 = false;
         vanta::g_frame = 0;
         vanta::g_playIndex = 0;
         if (vanta::macroMode() == 1) {
@@ -161,6 +241,19 @@ class $modify(VantaPlayLayer, PlayLayer) {
         auto f = m_fields.self();
         auto win = CCDirector::get()->getWinSize();
         bool dead = m_player1->m_isDead;
+
+        // graphics overlays
+        if (f->dim) {
+            GLubyte a = vanta::dimAlpha();
+            f->dim->setOpacity(a);
+            f->dim->setVisible(a > 0);
+        }
+        if (f->tint) {
+            GLubyte a = vanta::tintAlpha();
+            f->tint->setColor(vanta::tintColor());
+            f->tint->setOpacity(a);
+            f->tint->setVisible(a > 0);
+        }
 
         // noclip stats
         if (vanta::isOn("noclip")) {
@@ -203,16 +296,16 @@ class $modify(VantaPlayLayer, PlayLayer) {
             if (vanta::isOn("hitbox-trail")) {
                 if (!dead) {
                     size_t maxLen = (size_t)vanta::trailLength();
-                    f->trail1.push_back(m_player1->getObjectRect());
+                    f->trail1.push_back({m_player1->getObjectRect(), vanta::g_hold1});
                     if (m_player2 && m_player2->isVisible()) {
-                        f->trail2.push_back(m_player2->getObjectRect());
+                        f->trail2.push_back({m_player2->getObjectRect(), vanta::g_hold2});
                     }
                     while (f->trail1.size() > maxLen) f->trail1.pop_front();
                     while (f->trail2.size() > maxLen) f->trail2.pop_front();
                 }
                 if (vanta::isOn("show-hitbox") || dead) {
-                    drawRects(f->trailNode, f->trail1, vanta::trailColor(false));
-                    drawRects(f->trailNode, f->trail2, vanta::trailColor(true));
+                    drawTrail(f->trailNode, f->trail1, dead, false);
+                    drawTrail(f->trailNode, f->trail2, dead, true);
                 }
             } else {
                 f->trail1.clear();
@@ -220,7 +313,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
         }
 
-        // cheat indicator (top-left)
+        // cheat indicator: circle with an outline (top-left)
         if (f->dot) {
             f->dot->clear();
             if (vanta::isOn("cheat-indicator")) {
@@ -230,7 +323,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 ccColor4F col = cheating
                     ? ccColor4F{1.f, 0.2f, 0.2f, 1.f}
                     : ccColor4F{0.2f, 1.f, 0.4f, 1.f};
-                f->dot->drawDot(ccp(12.f, win.height - 12.f), 4.f, col);
+                CCPoint pos = ccp(14.f, win.height - 14.f);
+                f->dot->drawDot(pos, 7.f, ccColor4F{1.f, 1.f, 1.f, 0.9f});
+                f->dot->drawDot(pos, 5.5f, col);
             }
         }
 
@@ -295,10 +390,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
                         f->label->setAlignment(kCCTextAlignmentRight);
                         f->label->setPosition({win.width - pad, pad});
                         break;
-                    default: // top left (shifted right to clear the indicator dot)
+                    default: // top left (shifted right to clear the indicator circle)
                         f->label->setAnchorPoint({0.f, 1.f});
                         f->label->setAlignment(kCCTextAlignmentLeft);
-                        f->label->setPosition({22.f, win.height - pad});
+                        f->label->setPosition({26.f, win.height - pad});
                         break;
                 }
             }
