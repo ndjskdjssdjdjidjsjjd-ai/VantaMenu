@@ -1,5 +1,6 @@
 #pragma once
 #include <Geode/Geode.hpp>
+#include <Geode/utils/file.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <deque>
@@ -113,7 +114,7 @@ inline ccColor4F trailColor(bool p2) {
     return p2 ? ccColor4F{c.g, c.b, c.r, 1.f} : c;
 }
 
-// ---------- holding state (for green layer) ----------
+// ---------- holding state (for hold trail) ----------
 inline bool g_hold1 = false;
 inline bool g_hold2 = false;
 
@@ -210,6 +211,47 @@ inline void loadMacro(int levelID) {
     }
 }
 
+// ---------- texture packs ----------
+inline std::filesystem::path packsDir() {
+    auto d = Mod::get()->getConfigDir() / "packs";
+    std::error_code ec;
+    std::filesystem::create_directories(d, ec);
+    return d;
+}
+
+inline std::vector<std::string> listPacks() {
+    std::vector<std::string> out;
+    std::error_code ec;
+    for (auto const& e : std::filesystem::directory_iterator(packsDir(), ec)) {
+        std::error_code ec2;
+        if (e.is_directory(ec2)) out.push_back(e.path().filename().string());
+    }
+    return out;
+}
+
+inline bool packOn(std::string const& name) {
+    return Mod::get()->getSavedValue<bool>("pack-" + name, false);
+}
+
+inline void addEnabledPacks() {
+    auto fu = CCFileUtils::get();
+    for (auto const& n : listPacks()) {
+        std::string id = "vanta-pack-" + n;
+        fu->removeTexturePack(id);
+        if (packOn(n)) {
+            CCTexturePack pack;
+            pack.m_id = id;
+            pack.m_paths.push_back((packsDir() / n).string());
+            fu->addTexturePack(pack);
+        }
+    }
+}
+
+inline void reloadTextures() {
+    addEnabledPacks();
+    GameManager::get()->reloadAll(false, false, true);
+}
+
 // ADD NEW FEATURES HERE: one entry each
 inline std::vector<Feature> const& features() {
     static std::vector<Feature> list = {
@@ -223,10 +265,10 @@ inline std::vector<Feature> const& features() {
         {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
             100.f, 1.f, 2000.f},
         {"trail-color", "Trail Color", "Normal trail color.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
-        {"trail-red", "Red Layer", "Trail turns red when you die.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"trail-color-death", "Red Layer Color", "Color used on death.", "Hitbox", Kind::Color, {}, 0xFF2828, nullptr},
-        {"trail-green", "Green Layer", "Trail turns green while holding.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"trail-color-hold", "Green Layer Color", "Color used while holding.", "Hitbox", Kind::Color, {}, 0x32FF50, nullptr},
+        {"trail-inside", "Inside Trail", "Fills the inside of the trail.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
+        {"trail-color-inside", "Inside Trail Color", "Color of the inside fill.", "Hitbox", Kind::Color, {}, 0xFF2828, nullptr},
+        {"trail-hold", "Hold Trail", "Trail changes color while holding.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
+        {"trail-color-hold", "Hold Trail Color", "Color used while holding.", "Hitbox", Kind::Color, {}, 0x32FF50, nullptr},
 
         // ---------- Labels ----------
         {"labels", "Labels", "Master switch for all labels.", "Labels", Kind::Toggle, {}, 1, nullptr},
@@ -277,6 +319,14 @@ inline std::vector<Feature> const& features() {
             {"0.5x", "1x", "2x"}, 1, []{ bgRefresh(); }},
         {"bg-density", "Effect Density", "How many particles are drawn.", "Background", Kind::Cycle,
             {"Low", "Medium", "High"}, 1, []{ bgRefresh(); }},
+
+        // ---------- Textures (pack rows are added by the menu) ----------
+        {"tex-open", "Open Packs Folder", "Put texture pack folders in here.", "Textures", Kind::Button,
+            {"Open"}, 0, nullptr, 0.f, 0.f, 0.f,
+            []{ file::openFolder(packsDir()); }},
+        {"tex-reload", "Reload Textures", "Applies the packs you enabled.", "Textures", Kind::Button,
+            {"Reload"}, 0, nullptr, 0.f, 0.f, 0.f,
+            []{ reloadTextures(); }},
 
         // ---------- Global ----------
         {"cheat-indicator", "Cheat Indicator", "Circle: green = clean, red = cheating.", "Global", Kind::Toggle, {}, 1, nullptr},
