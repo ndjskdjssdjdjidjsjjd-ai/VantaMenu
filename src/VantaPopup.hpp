@@ -17,9 +17,9 @@ protected:
         auto tabs = CCMenu::create();
         tabs->setContentSize({m_size.width - 30.f, 28.f});
         tabs->setPosition({m_size.width / 2.f, m_size.height - 50.f});
-        tabs->setLayout(RowLayout::create()->setGap(6.f));
+        tabs->setLayout(RowLayout::create()->setGap(5.f));
         for (auto const& cat : cats) {
-            auto spr = ButtonSprite::create(cat.c_str(), 80, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .55f);
+            auto spr = ButtonSprite::create(cat.c_str(), 60, true, "bigFont.fnt", "GJ_button_02.png", 26.f, .5f);
             auto btn = CCMenuItemExt::createSpriteExtra(spr, [this, cat](CCMenuItemSpriteExtra*) {
                 m_cat = cat;
                 this->rebuild();
