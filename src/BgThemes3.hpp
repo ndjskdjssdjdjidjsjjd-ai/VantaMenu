@@ -3,131 +3,103 @@
 
 namespace vanta {
 
-inline void themeAurora(BgState& s) {
-    auto d = s.draw;
-    float W = s.W;
-    float H = s.H;
-    ccColor4F cols[3] = {
-        ccColor4F{0.2f, 1.f, 0.6f, 0.12f},
-        ccColor4F{0.2f, 0.7f, 1.f, 0.12f},
-        ccColor4F{0.7f, 0.4f, 1.f, 0.12f}
+inline void themeBlossom(BgState& s, float dt, float wind) {
+    float W = s.W, H = s.H, t = s.t;
+
+    for (int i = 0; i < 5; i++) {
+        float x0 = W * (0.1f + 0.2f * i) + S(t * 0.2f + i) * 15.f;
+        seg(s, x0, H, x0 - 100.f, 0.f, 15.f, C(1.f, 0.95f, 0.85f, 0.05f));
+    }
+
+    hills(s, 52.f, 18.f, 0.007f, t * 0.03f, C(1.f, 0.88f, 0.92f, 1.f));
+    hills(s, 32.f, 12.f, 0.011f, 2.f + t * 0.05f, C(0.97f, 0.8f, 0.87f, 1.f));
+
+    ccColor4F wood = C(0.33f, 0.2f, 0.18f, 1.f);
+    seg(s, W + 10.f, H - 30.f, W * 0.78f, H - 55.f, 4.f, wood);
+    seg(s, W * 0.78f, H - 55.f, W * 0.62f, H - 50.f, 3.f, wood);
+    seg(s, W * 0.78f, H - 55.f, W * 0.7f, H - 90.f, 2.5f, wood);
+    seg(s, W + 10.f, H - 70.f, W * 0.88f, H - 85.f, 3.f, wood);
+    seg(s, W * 0.62f, H - 50.f, W * 0.54f, H - 66.f, 2.f, wood);
+
+    CCPoint cl[6] = {
+        ccp(W * 0.78f, H - 55.f), ccp(W * 0.62f, H - 50.f), ccp(W * 0.7f, H - 90.f),
+        ccp(W * 0.88f, H - 85.f), ccp(W * 0.95f, H - 45.f), ccp(W * 0.54f, H - 66.f)
     };
-    for (int i = 0; i < 3; i++) {
-        for (float x = 0.f; x <= W + 8.f; x += 8.f) {
-            float yc = H * (0.62f + 0.04f * i)
-                + S(x * 0.012f + s.t * 0.5f + i * 2.f) * 28.f
-                + S(x * 0.03f - s.t * 0.8f) * 8.f;
-            float h = 38.f + S(x * 0.02f + s.t + i) * 12.f;
-            d->drawSegment(ccp(x, yc - h), ccp(x, yc + h), 4.5f, cols[i]);
-            d->drawSegment(ccp(x, yc - h * 0.3f), ccp(x, yc + h * 0.3f), 4.5f,
-                ccColor4F{cols[i].r, cols[i].g, cols[i].b, 0.14f});
+    for (int k = 0; k < 6; k++) {
+        float sway = S(t * 0.9f + k) * 1.8f + wind * 0.04f;
+        glow(s, ccp(cl[k].x, cl[k].y + sway), 26.f, C(1.f, 0.75f, 0.85f, 0.22f), 3);
+        for (int j = 0; j < 10; j++) {
+            float a = j * 2.39996f + k;
+            float r = 2.f + j * 1.5f;
+            dot(s, cl[k].x + std::cos(a) * r, cl[k].y + std::sin(a) * r + sway, 4.6f,
+                C(1.f, 0.7f + 0.06f * S(j + k * 2.f), 0.82f, 0.95f));
         }
-    }
-    stars(s);
-    for (float x = 0.f; x <= W + 20.f; x += 20.f) {
-        float mh = 30.f + 25.f * S(x * 0.01f) + 15.f * S(x * 0.027f + 2.f);
-        d->drawSegment(ccp(x, 0.f), ccp(x, mh), 10.f, ccColor4F{0.02f, 0.05f, 0.08f, 1.f});
-    }
-}
-
-inline void themeStars(BgState& s, float dt) {
-    auto d = s.draw;
-    float W = s.W;
-    float H = s.H;
-    glow(s, ccp(W * 0.25f, H * 0.55f), 120.f, ccColor4F{0.5f, 0.2f, 0.9f, 0.08f}, 4);
-    glow(s, ccp(W * 0.75f, H * 0.4f), 140.f, ccColor4F{0.2f, 0.4f, 0.9f, 0.07f}, 4);
-    for (int i = 0; i < 60; i++) {
-        float u = i / 60.f;
-        float px = W * u;
-        float py = H * (0.25f + 0.5f * u) + S(i * 12.9f) * 22.f;
-        d->drawDot(ccp(px, py), 1.2f, ccColor4F{0.85f, 0.85f, 1.f, 0.25f});
-    }
-    stars(s);
-
-    s.ssTimer -= dt;
-    if (!s.ssOn && s.ssTimer <= 0.f) {
-        s.ssOn = true;
-        s.ssX = R(W * 0.3f, W);
-        s.ssY = R(H * 0.6f, H);
-        s.ssTimer = R(3.f, 7.f);
-    }
-    if (s.ssOn) {
-        s.ssX -= 420.f * dt;
-        s.ssY -= 180.f * dt;
-        for (int k = 0; k < 4; k++) {
-            float off = k * 18.f;
-            d->drawSegment(ccp(s.ssX + off, s.ssY + off * 0.42f),
-                ccp(s.ssX + off + 18.f, s.ssY + (off + 18.f) * 0.42f),
-                1.3f - k * 0.25f, ccColor4F{1.f, 1.f, 1.f, 0.7f - k * 0.16f});
-        }
-        d->drawDot(ccp(s.ssX, s.ssY), 2.2f, ccColor4F{1.f, 1.f, 1.f, 1.f});
-        if (s.ssX < -90.f || s.ssY < -40.f) s.ssOn = false;
-    }
-}
-
-inline void themeRain(BgState& s, float dt) {
-    auto d = s.draw;
-    float W = s.W;
-    float H = s.H;
-
-    for (int i = 0; i < 6; i++) {
-        d->drawDot(ccp(W * i / 5.f, H + 8.f), 75.f, ccColor4F{0.05f, 0.06f, 0.1f, 0.35f});
+        dot(s, cl[k].x, cl[k].y + sway, 3.f, C(1.f, 0.9f, 0.94f, 1.f));
     }
 
-    s.nextFlash -= dt;
-    if (s.nextFlash <= 0.f) {
-        s.flash = 1.f;
-        makeBolt(s);
-        s.nextFlash = R(4.f, 9.f);
+    for (float x = 0.f; x <= W; x += 10.f) {
+        dot(s, x, 6.f + 3.f * S(x * 0.2f), 4.f, C(1.f, 0.8f, 0.88f, 0.9f));
     }
-    if (s.flash > 0.f) {
-        CCPoint q[4] = {ccp(0.f, 0.f), ccp(W, 0.f), ccp(W, H), ccp(0.f, H)};
-        d->drawPolygon(q, 4, ccColor4F{0.85f, 0.9f, 1.f, s.flash * 0.3f},
-            0.f, ccColor4F{0.f, 0.f, 0.f, 0.f});
-        for (size_t i = 1; i < s.bolt.size(); i++) {
-            d->drawSegment(s.bolt[i - 1], s.bolt[i], 3.f, ccColor4F{0.7f, 0.8f, 1.f, s.flash * 0.25f});
-            d->drawSegment(s.bolt[i - 1], s.bolt[i], 1.2f, ccColor4F{1.f, 1.f, 1.f, s.flash});
-        }
-        s.flash -= dt * 2.8f;
+
+    for (int i = 0; i < 12; i++) {
+        float bx = std::fmod(i * 131.7f + t * 8.f * (1.f + (i % 3) * 0.3f), W);
+        float by = H * 0.2f + std::fmod(i * 57.3f, H * 0.7f);
+        dot(s, bx, by, 8.f + 4.f * (i % 3), C(1.f, 0.9f, 0.95f, 0.06f));
     }
 
     for (auto& p : s.p) {
-        p.x += p.vx * dt;
         p.y += p.vy * dt;
-        if (p.y < 8.f) {
-            if (s.fx.size() < 120) {
-                Particle sp;
-                sp.x = p.x;
-                sp.y = 8.f;
-                s.fx.push_back(sp);
-            }
+        p.x += (p.vx + wind * p.z * 1.6f + S(t * 2.f + p.phase) * 20.f * p.z) * dt;
+        p.rot += p.rotV * dt;
+        if (p.y < -10.f || p.x < -12.f) {
             spawn(s, p, false);
             continue;
         }
-        d->drawSegment(ccp(p.x, p.y),
-            ccp(p.x - p.vx * 0.025f, p.y - p.vy * 0.025f),
-            0.5f + 0.4f * p.z, ccColor4F{0.75f, 0.85f, 1.f, 0.25f + 0.35f * p.z});
+        ccColor4F c = C(1.f, 0.86f, 0.92f, 0.55f + 0.4f * p.z);
+        if (p.kind == 0) c = C(1.f, 0.72f, 0.82f, 0.55f + 0.4f * p.z);
+        petal(s, p.x, p.y, p.size, p.rot, t * 3.f + p.phase, c);
     }
+}
 
-    for (size_t i = 0; i < s.fx.size();) {
-        auto& sp = s.fx[i];
-        sp.age += dt;
-        if (sp.age > 0.25f) {
-            s.fx.erase(s.fx.begin() + i);
-            continue;
-        }
-        float a = 1.f - sp.age / 0.25f;
-        for (int k = -1; k <= 1; k++) {
-            float px = sp.x + k * sp.age * 40.f;
-            float py = 8.f + 30.f * sp.age - 140.f * sp.age * sp.age;
-            if (py > 6.f) {
-                d->drawDot(ccp(px, py), 1.f, ccColor4F{0.8f, 0.9f, 1.f, 0.6f * a});
+inline void themeAurora(BgState& s) {
+    float W = s.W, H = s.H, t = s.t;
+    static float const cr[3] = {0.2f, 0.2f, 0.7f};
+    static float const cg[3] = {1.f, 0.7f, 0.4f};
+    static float const cb[3] = {0.55f, 1.f, 1.f};
+
+    stars(s);
+
+    for (int band = 0; band < 3; band++) {
+        for (float x = 0.f; x <= W + 6.f; x += 6.f) {
+            float yc = H * (0.64f + 0.05f * band)
+                + S(x * 0.011f + t * 0.45f + band * 2.f) * 30.f
+                + S(x * 0.031f - t * 0.8f) * 9.f;
+            float h = 46.f + S(x * 0.017f + t + band) * 16.f + 10.f * S(x * 0.05f - t * 1.6f);
+            float sh = 0.55f + 0.45f * S(x * 0.09f - t * 2.4f + band);
+            float step = h * 1.4f / 4.f;
+            for (int k = 0; k < 4; k++) {
+                float y0 = yc - h + k * step;
+                seg(s, x, y0, x, y0 + step, 6.5f, C(cr[band], cg[band], cb[band], (0.03f + 0.05f * k) * sh));
             }
+            seg(s, x, yc + h * 0.35f - 2.f, x, yc + h * 0.4f, 6.5f, C(cr[band], cg[band], cb[band], 0.22f * sh));
         }
-        i++;
     }
 
-    d->drawSegment(ccp(0.f, 8.f), ccp(W, 8.f), 14.f, ccColor4F{0.7f, 0.75f, 0.85f, 0.08f});
+    float ly = H * 0.11f;
+    for (float x = 0.f; x <= W + 18.f; x += 18.f) {
+        float mh = 34.f + 26.f * S(x * 0.01f) + 16.f * S(x * 0.027f + 2.f);
+        seg(s, x, ly, x, ly + mh, 10.f, C(0.02f, 0.05f, 0.08f, 1.f));
+        if (mh > 52.f) {
+            seg(s, x, ly + mh - 8.f, x, ly + mh, 10.f, C(0.7f, 0.82f, 0.9f, 0.9f));
+        }
+    }
+    rect(s, 0.f, 0.f, W, ly, C(0.02f, 0.06f, 0.09f, 1.f));
+    for (int i = 0; i < 30; i++) {
+        float rx = std::fmod(i * 47.3f + t * 6.f, W);
+        float ry = std::fmod(i * 13.7f, ly - 2.f) + 1.f;
+        float a = 0.05f + 0.08f * (0.5f + 0.5f * S(t * 2.f + i));
+        seg(s, rx, ry, rx + 16.f, ry, 1.f, C(0.3f, 1.f, 0.7f, a));
+    }
 }
 
 }
