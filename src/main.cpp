@@ -64,7 +64,7 @@ class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
     }
 
-    void processCommands(float dt) {
+    void processCommands(float dt, bool isHalfTick, bool isLastTick) {
         auto pl = PlayLayer::get();
         if (pl && static_cast<GJBaseGameLayer*>(pl) == this) {
             if (vanta::macroMode() == 2) {
@@ -76,11 +76,11 @@ class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
                     vanta::g_injecting = false;
                 }
             }
-            GJBaseGameLayer::processCommands(dt);
+            GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
             vanta::g_frame++;
             return;
         }
-        GJBaseGameLayer::processCommands(dt);
+        GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
     }
 };
 
@@ -193,7 +193,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
         }
 
-        // cheat indicator (top-left now)
+        // cheat indicator (top-left)
         if (f->dot) {
             f->dot->clear();
             if (vanta::isOn("cheat-indicator")) {
