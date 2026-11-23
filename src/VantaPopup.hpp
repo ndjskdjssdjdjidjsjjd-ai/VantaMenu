@@ -60,7 +60,6 @@ protected:
             m_scroll->m_contentLayer->addChild(makeRow(f, w));
         }
 
-        // texture packs found in the packs folder
         if (m_cat == "Textures") {
             auto packs = vanta::listPacks();
             if (packs.empty()) {
