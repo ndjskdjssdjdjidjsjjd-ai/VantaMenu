@@ -19,8 +19,8 @@ inline void themeFire(BgState& s, float dt, float wind) {
         float lean = S(x * 0.05f + t * 3.f) * 9.f + wind * 0.6f;
         tri(s, ccp(x - 9.f, 0.f), ccp(x + 9.f, 0.f), ccp(x + lean, h), C(0.8f, 0.1f, 0.02f, 0.5f));
         tri(s, ccp(x - 7.f, 0.f), ccp(x + 7.f, 0.f), ccp(x + lean * 0.8f, h * 0.72f), C(1.f, 0.42f, 0.05f, 0.62f));
-        tri(s, ccp(x - 5.f, 0.f), ccp(x + 5.f, 0.f), ccp(x + lean * 0.55f, h * 0.45f), C(1.f, 0.8f, 0.25f, 0.78f));
-        tri(s, ccp(x - 3.f, 0.f), ccp(x + 3.f, 0.f), ccp(x + lean * 0.3f, h * 0.22f), C(1.f, 0.98f, 0.8f, 0.85f));
+        triA(s, ccp(x - 5.f, 0.f), ccp(x + 5.f, 0.f), ccp(x + lean * 0.55f, h * 0.45f), C(1.f, 0.7f, 0.2f, 0.5f));
+        triA(s, ccp(x - 3.f, 0.f), ccp(x + 3.f, 0.f), ccp(x + lean * 0.3f, h * 0.22f), C(1.f, 0.9f, 0.6f, 0.6f));
     }
 
     for (int i = 0; i < 10; i++) {
@@ -51,7 +51,7 @@ inline void themeFire(BgState& s, float dt, float wind) {
             seg(s, p.x - vx * 0.05f, p.y - p.vy * 0.05f, p.x, p.y, p.size * (1.f - 0.5f * k),
                 C(1.f, 0.55f - 0.4f * k, 0.1f, 0.6f * (1.f - k)));
             glow(s, ccp(p.x, p.y), p.size * 2.6f * (1.f - 0.6f * k), C(1.f, 0.5f, 0.1f, 0.35f * (1.f - k)), 2);
-            dot(s, p.x, p.y, p.size * (1.f - 0.6f * k), C(1.f, 0.95f - 0.6f * k, 0.35f * (1.f - k), tw * (1.f - k)));
+            dotA(s, p.x, p.y, p.size * (1.f - 0.6f * k), C(1.f, 0.95f - 0.6f * k, 0.35f * (1.f - k), tw * (1.f - k)));
         }
     }
 }
