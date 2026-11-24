@@ -16,6 +16,7 @@ inline std::vector<Feature> const& features() {
 
         // ---------- Hitbox ----------
         {"show-hitbox", "Show Hitboxes", "Master switch: nothing below shows without it.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
+        {"hb-objects", "Object Hitboxes", "Styled boxes: blue blocks, red hazards, green orbs.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-player", "Player Hitbox", "Styled player box (needs Show Hitboxes).", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-style", "Hitbox Style", "Classic = red outer, blue inner box.", "Hitbox", Kind::Cycle,
             {"Classic", "Neon", "Glass"}, 0, nullptr},
@@ -28,6 +29,7 @@ inline std::vector<Feature> const& features() {
         {"trail-on-death", "Trail On Death", "Also show the trail after you die.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
         {"trail-style", "Trail Style", "Boxes, Neon or Ghost.", "Hitbox", Kind::Cycle,
             {"Boxes", "Neon", "Ghost"}, 1, nullptr},
+        {"trail-smart", "Smart Spacing", "Skips overlapping boxes so the trail stays clean.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
             100.f, 1.f, 2000.f},
         {"trail-color", "Trail Color", "Normal trail color.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
@@ -109,6 +111,7 @@ inline std::vector<Feature> const& features() {
                 m->setSavedValue<float>("speed-value", 1.f);
                 applySpeed();
             }},
+        {"menu-lock", "Lock Menu Position", "Stops the menu window from being dragged.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"no-newbest-orbs", "No New Best Orbs", "Hides the orb reward on new best.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"unlock-all", "Unlock All Icons", "Every icon and color unlocked.", "Global", Kind::Toggle, {}, 0, nullptr},
     };
