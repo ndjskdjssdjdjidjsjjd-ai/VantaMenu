@@ -1,5 +1,6 @@
 #pragma once
 #include "Features.hpp"
+#include <algorithm>
 #include <deque>
 
 namespace vanta {
@@ -138,7 +139,7 @@ inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
     }
 }
 
-// hitbox trail (Boxes / Neon / Ghost) + analysis markers
+// hitbox trail: centre line + clean boxes (Boxes / Neon / Ghost) + analysis markers
 inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2, bool dead) {
     size_t n = pts.size();
     if (n == 0) return;
@@ -146,6 +147,7 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     int style = getIndex("trail-style");
     bool inside = isOn("trail-inside");
     bool hold = isOn("trail-hold");
+    bool smart = isOn("trail-smart");
     ccColor4F base = trailColor(p2);
     ccColor4F ins = colorOf("trail-color-inside");
     ccColor4F holdC = colorOf("trail-color-hold");
@@ -153,31 +155,48 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
     CCPoint prev = ccp(0.f, 0.f);
     bool havePrev = false;
+    CCPoint lastBox = ccp(0.f, 0.f);
+    bool haveBox = false;
 
     for (size_t i = 0; i < n; i++) {
         float k = float(i + 1) / float(n);
-        float fade = 0.1f + 0.9f * k * k;
+        float fade = 0.12f + 0.88f * k;
         CCRect const& r = pts[i].r;
         ccColor4F c = (hold && pts[i].hold) ? holdC : base;
         CCPoint ctr = centerOf(r);
 
-        if (inside) {
-            fillBox(node, r, 0.f, withA(ins, 0.32f * fade));
+        // centre line: shows the exact path frame by frame
+        if (havePrev) {
+            float w = (style == 1) ? 0.6f + 1.2f * k : 0.7f;
+            node->drawSegment(prev, ctr, w, withA(c, 0.55f * fade));
         }
 
-        if (style == 0) {
-            strokeBox(node, r, 0.f, th, withA(c, fade));
-        } else if (style == 1) {
-            if (i + 120 >= n) {
-                strokeBox(node, r, 1.f, th * 3.f, withA(c, 0.12f * fade));
+        bool drawBox = true;
+        if (smart && haveBox && i + 1 < n) {
+            float minD = std::max(r.size.width, r.size.height) * 0.75f;
+            float dx = ctr.x - lastBox.x;
+            float dy = ctr.y - lastBox.y;
+            bool changed = i > 0 && pts[i].hold != pts[i - 1].hold;
+            if (dx * dx + dy * dy < minD * minD && !changed) drawBox = false;
+        }
+
+        if (drawBox) {
+            if (inside) {
+                fillBox(node, r, 0.f, withA(ins, 0.28f * fade));
             }
-            strokeBox(node, r, 0.f, th, withA(c, fade));
-            if (havePrev) {
-                node->drawSegment(prev, ctr, 0.6f + 1.4f * k, withA(c, 0.5f * fade));
+            if (style == 0) {
+                strokeBox(node, r, 0.f, th, withA(c, fade));
+            } else if (style == 1) {
+                if (i + 80 >= n) {
+                    strokeBox(node, r, 1.f, th * 3.f, withA(c, 0.12f * fade));
+                }
+                strokeBox(node, r, 0.f, th, withA(c, fade));
+            } else {
+                CCRect g = scaledRect(r, 0.45f + 0.55f * k);
+                fillBox(node, g, 0.f, withA(c, 0.35f * fade));
             }
-        } else {
-            CCRect g = scaledRect(r, 0.45f + 0.55f * k);
-            fillBox(node, g, 0.f, withA(c, 0.35f * fade));
+            lastBox = ctr;
+            haveBox = true;
         }
 
         prev = ctr;
@@ -188,6 +207,30 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
     if (dead) {
         strokeBox(node, pts[n - 1].r, 2.f, th * 2.f, ccColor4F{1.f, 1.f, 1.f, 0.9f});
+    }
+}
+
+// level object hitbox: kind 0 = solid (blue), 1 = hazard (red), 2 = special (green)
+inline void objectBox(CCDrawNode* n, CCRect const& r, int kind) {
+    if (r.size.width < 1.f || r.size.height < 1.f) return;
+    ccColor4F c = ccColor4F{0.25f, 0.55f, 1.f, 1.f};
+    if (kind == 1) c = ccColor4F{1.f, 0.2f, 0.25f, 1.f};
+    if (kind == 2) c = ccColor4F{0.25f, 1.f, 0.5f, 1.f};
+
+    int style = getIndex("hb-style");
+    float th = hbThick();
+    float fill = hbFill();
+
+    if (style == 1) {
+        strokeBox(n, r, 0.8f, th * 2.2f, withA(c, 0.16f));
+        fillBox(n, r, 0.f, withA(c, fill * 0.7f));
+        strokeBox(n, r, 0.f, th, withA(c, 1.f));
+    } else if (style == 2) {
+        fillBox(n, r, 0.f, withA(c, 0.12f + fill * 0.5f));
+        strokeBox(n, r, 0.f, th, ccColor4F{1.f, 1.f, 1.f, 0.85f});
+    } else {
+        fillBox(n, r, 0.f, withA(c, 0.10f + fill * 0.4f));
+        strokeBox(n, r, 0.f, th, withA(c, 0.95f));
     }
 }
 
