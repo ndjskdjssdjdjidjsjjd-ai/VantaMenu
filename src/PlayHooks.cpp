@@ -2,6 +2,7 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <algorithm>
+#include <cmath>
 #include <deque>
 #include <vector>
 #include "TrailDraw.hpp"
@@ -235,6 +236,23 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
     }
 
+    // styled hitboxes for blocks, hazards and special objects near the player
+    void vantaDrawObjects(CCDrawNode* node) {
+        float px = m_player1->getPositionX();
+        float lo = px - 260.f;
+        float hi = px + 700.f;
+        for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
+            float x = obj->getPositionX();
+            if (x < lo || x > hi) continue;
+            auto t = obj->m_objectType;
+            if (t == GameObjectType::Decoration) continue;
+            int kind = 2;
+            if (t == GameObjectType::Hazard) kind = 1;
+            else if (t == GameObjectType::Solid || t == GameObjectType::Slope) kind = 0;
+            vanta::objectBox(node, obj->getObjectRect(), kind);
+        }
+    }
+
     void postUpdate(float dt) {
         PlayLayer::postUpdate(dt);
         auto f = m_fields.self();
@@ -281,7 +299,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
 
         // the game's own hitboxes
-        if (vanta::isOn("show-hitbox")) {
+        if (vanta::isOn("show-hitbox") && !vanta::isOn("hb-objects")) {
             m_isDebugDrawEnabled = true;
             if (m_debugDrawNode) m_debugDrawNode->setVisible(true);
             this->updateDebugDraw();
@@ -302,6 +320,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
         bool visible = master || deathTrail;
         if (f->trailNode) {
             f->trailNode->clear();
+            if (master && vanta::isOn("hb-objects")) {
+                this->vantaDrawObjects(f->trailNode);
+            }
             if (trailOn) {
                 if (!dead) {
                     size_t maxLen = (size_t)vanta::trailLength();
@@ -358,8 +379,12 @@ class $modify(VantaPlayLayer, PlayLayer) {
                     ? ccColor4F{1.f, 0.2f, 0.2f, 1.f}
                     : ccColor4F{0.2f, 1.f, 0.4f, 1.f};
                 CCPoint pos = ccp(14.f, win.height - 14.f);
-                f->dot->drawDot(pos, 7.f, ccColor4F{1.f, 1.f, 1.f, 0.9f});
-                f->dot->drawDot(pos, 5.5f, col);
+                CCPoint ring[32];
+                for (int i = 0; i < 32; i++) {
+                    float a = i * 6.2831853f / 32.f;
+                    ring[i] = ccp(pos.x + std::cos(a) * 6.f, pos.y + std::sin(a) * 6.f);
+                }
+                f->dot->drawPolygon(ring, 32, col, 0.f, ccColor4F{0.f, 0.f, 0.f, 0.f});
             }
         }
 
