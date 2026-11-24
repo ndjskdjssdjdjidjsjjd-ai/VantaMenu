@@ -32,6 +32,7 @@ inline ccColor4F C(float r, float g, float b, float a) {
 
 struct BgState {
     CCDrawNode* draw = nullptr;
+    CCDrawNode* add = nullptr;
     std::vector<Particle> p;
     std::vector<Particle> fx;
     std::vector<CCPoint> bolt;
@@ -45,6 +46,22 @@ struct BgState {
 
 inline void dot(BgState& s, float x, float y, float r, ccColor4F c) {
     s.draw->drawDot(ccp(x, y), r, c);
+}
+
+inline void dotA(BgState& s, float x, float y, float r, ccColor4F c) {
+    CCDrawNode* d = s.add ? s.add : s.draw;
+    d->drawDot(ccp(x, y), r, c);
+}
+
+inline void segA(BgState& s, float x1, float y1, float x2, float y2, float w, ccColor4F c) {
+    CCDrawNode* d = s.add ? s.add : s.draw;
+    d->drawSegment(ccp(x1, y1), ccp(x2, y2), w, c);
+}
+
+inline void triA(BgState& s, CCPoint a, CCPoint b, CCPoint c, ccColor4F col) {
+    CCDrawNode* d = s.add ? s.add : s.draw;
+    CCPoint pts[3] = {a, b, c};
+    d->drawPolygon(pts, 3, col, 0.f, ccColor4F{0.f, 0.f, 0.f, 0.f});
 }
 
 inline void seg(BgState& s, float x1, float y1, float x2, float y2, float w, ccColor4F c) {
@@ -72,7 +89,7 @@ inline void ellipse(BgState& s, float x, float y, float rx, float ry, float w, c
 inline void glow(BgState& s, CCPoint c, float r, ccColor4F col, int layers) {
     for (int i = 0; i < layers; i++) {
         float k = float(i) / float(layers);
-        dot(s, c.x, c.y, r * (1.f - k),
+        dotA(s, c.x, c.y, r * (1.f - k),
             C(col.r, col.g, col.b, col.a * (0.25f + 0.75f * k) * 2.f / layers));
     }
 }
@@ -96,11 +113,14 @@ inline void petal(BgState& s, float x, float y, float size, float rot, float fli
 }
 
 inline void cloud(BgState& s, float x, float y, float size, float a) {
-    ccColor4F c = C(1.f, 1.f, 1.f, a);
-    dot(s, x, y, size * 0.5f, c);
-    dot(s, x + size * 0.45f, y + size * 0.1f, size * 0.4f, c);
-    dot(s, x - size * 0.45f, y + size * 0.05f, size * 0.38f, c);
-    dot(s, x + size * 0.1f, y + size * 0.3f, size * 0.38f, c);
+    for (int k = 0; k < 9; k++) {
+        float px = x + (k - 4) * size * 0.22f;
+        float py = y + std::sin(k * 1.7f) * size * 0.12f + (k % 3) * size * 0.05f;
+        float r = size * (0.28f + 0.12f * std::sin(k * 2.3f + 1.f));
+        dot(s, px, py - r * 0.22f, r, C(0.74f, 0.79f, 0.9f, a * 0.55f));
+        dot(s, px, py, r, C(0.97f, 0.98f, 1.f, a * 0.8f));
+        dot(s, px + r * 0.15f, py + r * 0.25f, r * 0.7f, C(1.f, 1.f, 1.f, a));
+    }
 }
 
 inline float hillY(float base, float amp, float freq, float drift, float x) {
@@ -116,7 +136,7 @@ inline void hills(BgState& s, float base, float amp, float freq, float drift, cc
 inline void stars(BgState& s) {
     for (auto& p : s.p) {
         float a = 0.35f + 0.65f * (0.5f + 0.5f * S(s.t * 2.5f + p.phase));
-        dot(s, p.x, p.y, p.size, C(1.f, 1.f, 1.f, a));
+        dotA(s, p.x, p.y, p.size, C(1.f, 1.f, 1.f, a));
     }
 }
 
@@ -228,6 +248,20 @@ inline void haze(BgState& s, float y, float h, ccColor4F col) {
     for (int i = 0; i < 6; i++) {
         float hh = h * (1.f - i / 6.f);
         rect(s, -20.f, y - hh * 0.5f, s.W + 20.f, y + hh * 0.5f, C(col.r, col.g, col.b, col.a * 0.2f));
+    }
+}
+
+inline ccColor4F lerpC(ccColor4F a, ccColor4F b, float k) {
+    return C(a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, 1.f);
+}
+
+// rich 3-stop sky (bottom, middle, top) drawn as smooth bands
+inline void skyBands(BgState& s, ccColor4F b, ccColor4F m, ccColor4F t) {
+    const int N = 36;
+    for (int i = 0; i < N; i++) {
+        float uc = (i + 0.5f) / N;
+        ccColor4F c = (uc < 0.5f) ? lerpC(b, m, uc * 2.f) : lerpC(m, t, (uc - 0.5f) * 2.f);
+        rect(s, -20.f, i * s.H / N - 1.f, s.W + 20.f, (i + 1) * s.H / N + 1.f, c);
     }
 }
 
