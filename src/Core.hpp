@@ -164,6 +164,13 @@ inline GLubyte dimAlpha() {
     return v[(i >= 0 && i < 4) ? i : 0];
 }
 
+// ---------- building opacity ----------
+inline float objOpacity() {
+    static float const v[] = {1.f, 0.75f, 0.5f, 0.25f, 0.1f};
+    int i = getIndex("obj-opacity");
+    return v[(i >= 0 && i < 5) ? i : 0];
+}
+
 // ---------- CPS ----------
 inline std::deque<std::chrono::steady_clock::time_point> g_clicks;
 
