@@ -4,6 +4,7 @@
 #include "BgThemes2.hpp"
 #include "BgThemes3.hpp"
 #include "BgThemes4.hpp"
+#include "BgProps.hpp"
 
 namespace vanta {
 
@@ -97,6 +98,8 @@ protected:
             case 8: themeRain(m_s, dt, wind); break;
             default: break;
         }
+
+        drawProps(m_s, wind);
 
         // cinematic finish: horizon haze, vignette and a slow camera drift
         float W = m_s.W;
