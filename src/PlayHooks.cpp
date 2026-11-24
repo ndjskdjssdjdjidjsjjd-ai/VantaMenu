@@ -21,6 +21,10 @@ class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
             if (button == 1) {
                 if (isPlayer1) vanta::g_hold1 = down;
                 else vanta::g_hold2 = down;
+                if (down) {
+                    if (isPlayer1) vanta::g_click1 = true;
+                    else vanta::g_click2 = true;
+                }
             }
 
             if (down) vanta::registerClick();
@@ -65,6 +69,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         int spShown = -2;
         std::deque<vanta::TrailPt> trail1;
         std::deque<vanta::TrailPt> trail2;
+        std::vector<vanta::HbFx> fx;
         float time = 0.f;
         float fps = 60.f;
         bool hidden = false;
@@ -199,6 +204,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         f->hitPrev = false;
         f->hasDeath = false;
         f->frameCounter = 0;
+        f->fx.clear();
 
         vanta::g_hold1 = false;
         vanta::g_hold2 = false;
@@ -225,6 +231,14 @@ class $modify(VantaPlayLayer, PlayLayer) {
             m_fields->deathRect = obj->getObjectRect();
             m_fields->hasDeath = true;
         }
+        if (vanta::isOn("show-hitbox") && vanta::isOn("hb-anim")) {
+            CCPoint pc = vanta::centerOf(m_player1->getObjectRect());
+            vanta::spawnShards(m_fields->fx, pc);
+            vanta::spawnRing(m_fields->fx, pc, 1, 36.f, 0.45f);
+            if (obj && obj != m_anticheatSpike) {
+                vanta::spawnRing(m_fields->fx, vanta::centerOf(obj->getObjectRect()), 1, 46.f, 0.5f);
+            }
+        }
         PlayLayer::destroyPlayer(player, obj);
 
         // custom respawn time
@@ -239,6 +253,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
     // styled hitboxes for blocks, hazards and special objects near the player
     void vantaDrawObjects(CCDrawNode* node) {
         float px = m_player1->getPositionX();
+        CCPoint pc = vanta::centerOf(m_player1->getObjectRect());
         float lo = px - 260.f;
         float hi = px + 700.f;
         for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
@@ -249,7 +264,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
             int kind = 2;
             if (t == GameObjectType::Hazard) kind = 1;
             else if (t == GameObjectType::Solid || t == GameObjectType::Slope) kind = 0;
-            vanta::objectBox(node, obj->getObjectRect(), kind);
+            CCRect rr = obj->getObjectRect();
+            CCPoint oc = vanta::centerOf(rr);
+            float ddx = oc.x - pc.x;
+            float ddy = oc.y - pc.y;
+            float dist = std::sqrt(ddx * ddx + ddy * ddy);
+            float prox = std::max(0.f, 1.f - dist / 110.f);
+            vanta::objectBox(node, rr, kind, prox);
         }
     }
 
@@ -313,11 +334,27 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
         }
 
+        float rdt = CCDirector::get()->getDeltaTime();
+        vanta::g_anim += rdt;
+
         // hitboxes: everything here only shows when Show Hitboxes is on
         bool master = vanta::isOn("show-hitbox");
         bool trailOn = vanta::isOn("hitbox-trail");
         bool deathTrail = vanta::isOn("trail-on-death") && dead;
         bool visible = master || deathTrail;
+        bool animOn = vanta::isOn("hb-anim");
+        if (vanta::g_click1) {
+            vanta::g_click1 = false;
+            if (master && animOn) {
+                vanta::spawnRing(f->fx, vanta::centerOf(m_player1->getObjectRect()), 0, 26.f, 0.3f);
+            }
+        }
+        if (vanta::g_click2) {
+            vanta::g_click2 = false;
+            if (master && animOn && m_player2 && m_player2->isVisible()) {
+                vanta::spawnRing(f->fx, vanta::centerOf(m_player2->getObjectRect()), 0, 26.f, 0.3f);
+            }
+        }
         if (f->trailNode) {
             f->trailNode->clear();
             if (master && vanta::isOn("hb-objects")) {
@@ -343,13 +380,18 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 f->trail2.clear();
             }
             if (master && vanta::isOn("hb-player")) {
-                vanta::drawPlayerBox(f->trailNode, m_player1, false);
+                vanta::drawPlayerBox(f->trailNode, m_player1, false, vanta::g_hold1);
                 if (m_player2 && m_player2->isVisible()) {
-                    vanta::drawPlayerBox(f->trailNode, m_player2, true);
+                    vanta::drawPlayerBox(f->trailNode, m_player2, true, vanta::g_hold2);
                 }
             }
             if (visible && dead && f->hasDeath && vanta::isOn("trail-deathmark")) {
                 vanta::drawDeath(f->trailNode, f->deathRect, m_player1->getObjectRect());
+            }
+            if (master && animOn) {
+                vanta::drawFx(f->trailNode, f->fx, rdt);
+            } else {
+                f->fx.clear();
             }
         }
 
