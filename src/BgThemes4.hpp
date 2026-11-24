@@ -14,7 +14,7 @@ inline void themeStars(BgState& s, float dt) {
         float u = i / 150.f;
         float px = W * u;
         float py = H * (0.2f + 0.6f * u) + S(i * 12.9f) * 30.f;
-        dot(s, px, py, 0.8f + 0.6f * std::fabs(S(i * 3.3f)), C(0.88f, 0.88f, 1.f, 0.12f + 0.12f * S(t + i)));
+        dotA(s, px, py, 0.8f + 0.6f * std::fabs(S(i * 3.3f)), C(0.88f, 0.88f, 1.f, 0.14f + 0.12f * S(t + i)));
     }
 
     stars(s);
