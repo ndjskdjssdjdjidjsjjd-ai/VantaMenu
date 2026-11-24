@@ -135,6 +135,9 @@ inline float hbFill() {
 
 inline bool g_hold1 = false;
 inline bool g_hold2 = false;
+inline bool g_click1 = false;
+inline bool g_click2 = false;
+inline float g_anim = 0.f;
 
 // ---------- labels ----------
 inline float labelScale() {
