@@ -292,14 +292,100 @@ public:
     }
 };
 
+// The Vanta button: drag it anywhere, it remembers where you left it.
+class VantaFab : public CCLayer {
+protected:
+    ButtonSprite* m_spr = nullptr;
+    CCPoint m_start = ccp(0.f, 0.f);
+    bool m_down = false;
+    bool m_moved = false;
+
+    CCPoint clampPos(CCPoint p) {
+        auto win = CCDirector::get()->getWinSize();
+        p.x = std::max(25.f, std::min(win.width - 25.f, p.x));
+        p.y = std::max(18.f, std::min(win.height - 18.f, p.y));
+        return p;
+    }
+
+    void savePos() {
+        auto win = CCDirector::get()->getWinSize();
+        auto p = this->getPosition();
+        Mod::get()->setSavedValue<float>("fab-fx", p.x / win.width);
+        Mod::get()->setSavedValue<float>("fab-fy", p.y / win.height);
+    }
+
+    bool init() override {
+        if (!CCLayer::init()) return false;
+
+        m_spr = ButtonSprite::create("Vanta", 60, true, "goldFont.fnt", "GJ_button_01.png", 28.f, .7f);
+        this->addChild(m_spr);
+
+        auto win = CCDirector::get()->getWinSize();
+        float fx = Mod::get()->getSavedValue<float>("fab-fx", 50.f / win.width);
+        float fy = Mod::get()->getSavedValue<float>("fab-fy", 1.f - 25.f / win.height);
+        this->setPosition(this->clampPos(ccp(fx * win.width, fy * win.height)));
+
+        this->setTouchMode(kCCTouchesOneByOne);
+        this->setTouchPriority(-129);
+        this->setTouchEnabled(true);
+        return true;
+    }
+
+    bool ccTouchBegan(CCTouch* t, CCEvent*) override {
+        if (!this->isVisible()) return false;
+        CCPoint local = m_spr->convertToNodeSpace(t->getLocation());
+        CCSize cs = m_spr->getContentSize();
+        if (local.x < 0.f || local.x > cs.width || local.y < 0.f || local.y > cs.height) return false;
+        m_down = true;
+        m_moved = false;
+        m_start = t->getLocation();
+        m_spr->setScale(0.9f);
+        return true;
+    }
+
+    void ccTouchMoved(CCTouch* t, CCEvent*) override {
+        if (!m_down) return;
+        CCPoint now = t->getLocation();
+        float dx = now.x - m_start.x;
+        float dy = now.y - m_start.y;
+        if (!m_moved && dx * dx + dy * dy > 100.f) {
+            m_moved = true;
+        }
+        if (m_moved && !vanta::isOn("fab-lock")) {
+            this->setPosition(this->clampPos(now));
+        }
+    }
+
+    void ccTouchEnded(CCTouch*, CCEvent*) override {
+        if (!m_down) return;
+        m_down = false;
+        m_spr->setScale(1.f);
+        if (m_moved) {
+            if (!vanta::isOn("fab-lock")) this->savePos();
+        } else {
+            if (auto p = VantaPopup::create()) p->show();
+        }
+    }
+
+    void ccTouchCancelled(CCTouch*, CCEvent*) override {
+        m_down = false;
+        m_spr->setScale(1.f);
+    }
+
+public:
+    static VantaFab* create() {
+        auto ret = new VantaFab();
+        if (ret->init()) {
+            ret->autorelease();
+            return ret;
+        }
+        delete ret;
+        return nullptr;
+    }
+};
+
 inline void addVantaButton(CCNode* parent) {
-    auto menu = CCMenu::create();
-    auto spr = ButtonSprite::create("Vanta", 60, true, "goldFont.fnt", "GJ_button_01.png", 28.f, .7f);
-    auto btn = CCMenuItemExt::createSpriteExtra(spr, [](CCMenuItemSpriteExtra*) {
-        if (auto p = VantaPopup::create()) p->show();
-    });
-    menu->addChild(btn);
-    auto win = CCDirector::get()->getWinSize();
-    menu->setPosition({50.f, win.height - 25.f});
-    parent->addChild(menu, 100);
+    if (auto fab = VantaFab::create()) {
+        parent->addChild(fab, 100);
+    }
 }
