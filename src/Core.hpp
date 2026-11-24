@@ -169,9 +169,22 @@ inline GLubyte dimAlpha() {
 
 // ---------- building opacity ----------
 inline float objOpacity() {
-    static float const v[] = {1.f, 0.75f, 0.5f, 0.25f, 0.1f};
-    int i = getIndex("obj-opacity");
-    return v[(i >= 0 && i < 5) ? i : 0];
+    float v = getNum("obj-opacity-pct");
+    if (v < 0.f) v = 0.f;
+    if (v > 100.f) v = 100.f;
+    return v / 100.f;
+}
+
+// which level objects the Building Opacity feature touches
+inline bool objAffects(GameObjectType t) {
+    int tg = getIndex("obj-target");
+    bool solid = (t == GameObjectType::Solid || t == GameObjectType::Slope);
+    bool deco = (t == GameObjectType::Decoration);
+    bool hazard = (t == GameObjectType::Hazard);
+    if (tg == 0) return solid;
+    if (tg == 1) return deco;
+    if (tg == 2) return solid || deco;
+    return !hazard;
 }
 
 // ---------- CPS ----------
