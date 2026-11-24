@@ -1,15 +1,26 @@
 #pragma once
 #include "Features.hpp"
+#include <algorithm>
 
 class VantaPopup : public geode::Popup {
 protected:
     ScrollLayer* m_scroll = nullptr;
+    CCPoint m_origin = ccp(0.f, 0.f);
+    CCPoint m_lastTouch = ccp(0.f, 0.f);
+    bool m_drag = false;
     CCLabelBMFont* m_catLabel = nullptr;
     std::string m_cat;
 
     bool init() {
         if (!Popup::init(480.f, 250.f)) return false;
         this->setTitle("VantaMenu");
+
+        // restore the position the menu was left in
+        m_origin = m_mainLayer->getPosition();
+        this->applyOffset(
+            Mod::get()->getSavedValue<float>("menu-dx", 0.f),
+            Mod::get()->getSavedValue<float>("menu-dy", 0.f)
+        );
 
         auto cats = vanta::categories();
         m_cat = cats.empty() ? "" : cats[0];
@@ -217,6 +228,56 @@ protected:
 
         row->addChild(menu);
         return row;
+    }
+
+    void applyOffset(float dx, float dy) {
+        auto win = CCDirector::get()->getWinSize();
+        float limX = win.width / 2.f + m_size.width / 2.f - 80.f;
+        float limY = win.height / 2.f + m_size.height / 2.f - 60.f;
+        dx = std::max(-limX, std::min(limX, dx));
+        dy = std::max(-limY, std::min(limY, dy));
+        m_mainLayer->setPosition(ccp(m_origin.x + dx, m_origin.y + dy));
+    }
+
+    void finishDrag() {
+        if (!m_drag) return;
+        m_drag = false;
+        auto p = m_mainLayer->getPosition();
+        this->applyOffset(p.x - m_origin.x, p.y - m_origin.y);
+        auto q = m_mainLayer->getPosition();
+        Mod::get()->setSavedValue<float>("menu-dx", q.x - m_origin.x);
+        Mod::get()->setSavedValue<float>("menu-dy", q.y - m_origin.y);
+    }
+
+    bool ccTouchBegan(CCTouch* t, CCEvent* e) override {
+        if (!vanta::isOn("menu-lock")) {
+            CCPoint local = m_mainLayer->convertToNodeSpace(t->getLocation());
+            if (local.x >= 0.f && local.x <= m_size.width && local.y >= 0.f && local.y <= m_size.height) {
+                m_drag = true;
+                m_lastTouch = t->getLocation();
+            }
+        }
+        return Popup::ccTouchBegan(t, e);
+    }
+
+    void ccTouchMoved(CCTouch* t, CCEvent* e) override {
+        if (m_drag) {
+            CCPoint now = t->getLocation();
+            CCPoint pos = m_mainLayer->getPosition();
+            m_mainLayer->setPosition(ccp(pos.x + (now.x - m_lastTouch.x), pos.y + (now.y - m_lastTouch.y)));
+            m_lastTouch = now;
+        }
+        Popup::ccTouchMoved(t, e);
+    }
+
+    void ccTouchEnded(CCTouch* t, CCEvent* e) override {
+        this->finishDrag();
+        Popup::ccTouchEnded(t, e);
+    }
+
+    void ccTouchCancelled(CCTouch* t, CCEvent* e) override {
+        this->finishDrag();
+        Popup::ccTouchCancelled(t, e);
     }
 
 public:
