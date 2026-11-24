@@ -79,9 +79,9 @@ inline void themeAurora(BgState& s) {
             float step = h * 1.4f / 4.f;
             for (int k = 0; k < 4; k++) {
                 float y0 = yc - h + k * step;
-                seg(s, x, y0, x, y0 + step, 6.5f, C(cr[band], cg[band], cb[band], (0.03f + 0.05f * k) * sh));
+                segA(s, x, y0, x, y0 + step, 6.5f, C(cr[band], cg[band], cb[band], (0.04f + 0.07f * k) * sh));
             }
-            seg(s, x, yc + h * 0.35f - 2.f, x, yc + h * 0.4f, 6.5f, C(cr[band], cg[band], cb[band], 0.22f * sh));
+            segA(s, x, yc + h * 0.35f - 2.f, x, yc + h * 0.4f, 6.5f, C(cr[band], cg[band], cb[band], 0.3f * sh));
         }
     }
 
