@@ -7,6 +7,7 @@ namespace vanta {
 struct TrailPt {
     CCRect r;
     bool hold = false;
+    int frame = 0;
 };
 
 inline ccColor4F withA(ccColor4F c, float a) {
@@ -43,7 +44,7 @@ inline CCRect scaledRect(CCRect const& r, float k) {
     return CCRect(c.x - w * 0.5f, c.y - h * 0.5f, w, h);
 }
 
-// styled player hitbox (Neon / Glass / Outline)
+// player hitbox: Classic (GD look), Neon or Glass
 inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c) {
     int style = getIndex("hb-style");
     float th = hbThick();
@@ -51,12 +52,22 @@ inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c) {
     ccColor4F white{1.f, 1.f, 1.f, 1.f};
 
     if (style == 0) {
+        ccColor4F red{1.f, 0.12f, 0.12f, 1.f};
+        ccColor4F blue{0.2f, 0.45f, 1.f, 1.f};
+        CCRect inner = scaledRect(r, 0.5f);
+        fillBox(n, r, 0.f, withA(red, 0.10f + fill * 0.4f));
+        strokeBox(n, r, 0.f, th, withA(red, 0.95f));
+        fillBox(n, inner, 0.f, withA(blue, 0.2f + fill * 0.4f));
+        strokeBox(n, inner, 0.f, th, withA(blue, 0.95f));
+        n->drawDot(centerOf(r), 0.9f, withA(white, 0.8f));
+    } else if (style == 1) {
         strokeBox(n, r, 1.5f, th * 3.4f, withA(c, 0.10f));
         strokeBox(n, r, 0.8f, th * 2.0f, withA(c, 0.22f));
         fillBox(n, r, 0.f, withA(c, fill));
         strokeBox(n, r, 0.f, th, withA(c, 1.f));
         strokeBox(n, r, -0.5f, th * 0.4f, withA(white, 0.7f));
-    } else if (style == 1) {
+        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, ccColor4F{0.45f, 0.85f, 1.f, 0.95f});
+    } else {
         fillBox(n, r, 0.f, withA(c, 0.15f + fill));
         strokeBox(n, r, 0.f, th, withA(white, 0.9f));
         float x0 = r.getMinX();
@@ -74,9 +85,7 @@ inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c) {
         n->drawSegment(ccp(x1, y1), ccp(x1 - L, y1), th, wc);
         n->drawSegment(ccp(x1, y1), ccp(x1, y1 - L), th, wc);
         n->drawSegment(ccp(x0 + 2.f, y1 - 1.5f), ccp(x1 - 2.f, y1 - 1.5f), 0.6f, withA(white, 0.4f));
-    } else {
-        fillBox(n, r, 0.f, withA(c, fill));
-        strokeBox(n, r, 0.f, th * 1.2f, withA(c, 1.f));
+        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, ccColor4F{0.45f, 0.85f, 1.f, 0.95f});
     }
 }
 
@@ -86,10 +95,50 @@ inline void drawPlayerBox(CCDrawNode* n, PlayerObject* p, bool p2) {
     ccColor4F c = colorOf("hb-color");
     if (p2) c = ccColor4F{c.g, c.b, c.r, 1.f};
     styledBox(n, r, c);
-    strokeBox(n, scaledRect(r, 0.5f), 0.f, hbThick(), ccColor4F{0.45f, 0.85f, 1.f, 0.95f});
 }
 
-// hitbox trail (Boxes / Neon / Ghost)
+// analysis aids: frame ticks and press/release markers
+inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
+    size_t n = pts.size();
+    if (n < 2) return;
+    bool clicks = isOn("trail-markers");
+    bool ticks = isOn("trail-ticks");
+    if (!clicks && !ticks) return;
+
+    ccColor4F green{0.2f, 1.f, 0.4f, 1.f};
+    ccColor4F red{1.f, 0.35f, 0.35f, 1.f};
+
+    for (size_t i = 1; i < n; i++) {
+        CCRect const& r = pts[i].r;
+        CCPoint c = centerOf(r);
+        float k = float(i + 1) / float(n);
+        float top = r.getMaxY();
+        float bot = r.getMinY();
+        int fr = pts[i].frame;
+
+        if (ticks) {
+            if (fr % 60 == 0) {
+                node->drawSegment(ccp(c.x, bot - 7.f), ccp(c.x, top + 7.f), 1.2f,
+                    ccColor4F{1.f, 1.f, 1.f, 0.85f * k});
+            } else if (fr % 10 == 0) {
+                node->drawSegment(ccp(c.x, bot - 3.f), ccp(c.x, top + 3.f), 0.8f,
+                    ccColor4F{1.f, 1.f, 1.f, 0.45f * k});
+            }
+        }
+
+        if (clicks && pts[i].hold != pts[i - 1].hold) {
+            if (pts[i].hold) {
+                node->drawSegment(ccp(c.x, top), ccp(c.x, top + 8.f), 0.9f, withA(green, 0.9f * k));
+                node->drawDot(ccp(c.x, top + 9.f), 2.6f, withA(green, k));
+            } else {
+                node->drawSegment(ccp(c.x, bot), ccp(c.x, bot - 8.f), 0.9f, withA(red, 0.9f * k));
+                node->drawDot(ccp(c.x, bot - 9.f), 2.6f, withA(red, k));
+            }
+        }
+    }
+}
+
+// hitbox trail (Boxes / Neon / Ghost) + analysis markers
 inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2, bool dead) {
     size_t n = pts.size();
     if (n == 0) return;
@@ -135,9 +184,19 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
         havePrev = true;
     }
 
+    drawMarkers(node, pts);
+
     if (dead) {
         strokeBox(node, pts[n - 1].r, 2.f, th * 2.f, ccColor4F{1.f, 1.f, 1.f, 0.9f});
     }
+}
+
+// highlights the object that killed the player
+inline void drawDeath(CCDrawNode* n, CCRect const& obj, CCRect const& pl) {
+    fillBox(n, obj, 1.5f, ccColor4F{1.f, 0.1f, 0.1f, 0.35f});
+    strokeBox(n, obj, 1.5f, 2.f, ccColor4F{1.f, 1.f, 1.f, 0.95f});
+    strokeBox(n, obj, 3.5f, 3.f, ccColor4F{1.f, 0.2f, 0.2f, 0.3f});
+    n->drawSegment(centerOf(pl), centerOf(obj), 0.8f, ccColor4F{1.f, 1.f, 1.f, 0.6f});
 }
 
 }
