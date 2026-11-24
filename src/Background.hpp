@@ -97,6 +97,23 @@ protected:
             case 8: themeRain(m_s, dt, wind); break;
             default: break;
         }
+
+        // cinematic finish: horizon haze, vignette and a slow camera drift
+        float W = m_s.W;
+        float H = m_s.H;
+        switch (m_s.theme) {
+            case 1: haze(m_s, H * 0.12f, H * 0.5f, C(1.f, 0.45f, 0.1f, 0.22f)); break;
+            case 2: haze(m_s, H * 0.25f, H * 0.35f, C(0.6f, 0.75f, 1.f, 0.2f)); break;
+            case 3: haze(m_s, H * 0.3f, H * 0.4f, C(1.f, 1.f, 0.9f, 0.2f)); break;
+            case 4: haze(m_s, H * 0.34f, H * 0.25f, C(1.f, 1.f, 1.f, 0.25f)); break;
+            case 5: haze(m_s, H * 0.25f, H * 0.4f, C(1.f, 0.85f, 0.9f, 0.22f)); break;
+            case 6: haze(m_s, H * 0.15f, H * 0.3f, C(0.3f, 1.f, 0.7f, 0.15f)); break;
+            case 8: haze(m_s, H * 0.1f, H * 0.5f, C(0.7f, 0.75f, 0.85f, 0.25f)); break;
+            default: break;
+        }
+        vignette(m_s);
+        m_s.draw->setScale(1.05f);
+        m_s.draw->setPosition(ccp(-W * 0.025f + S(t * 0.17f) * 5.f, -H * 0.025f + S(t * 0.13f + 1.f) * 3.f));
     }
 
 public:
