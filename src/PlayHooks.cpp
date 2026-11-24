@@ -70,6 +70,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
         std::deque<vanta::TrailPt> trail1;
         std::deque<vanta::TrailPt> trail2;
         std::vector<vanta::HbFx> fx;
+        CCPoint prevC = ccp(0.f, 0.f);
+        CCPoint vel = ccp(0.f, 0.f);
+        bool havePrev = false;
         float time = 0.f;
         float fps = 60.f;
         bool hidden = false;
@@ -205,6 +208,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
         f->hasDeath = false;
         f->frameCounter = 0;
         f->fx.clear();
+        f->havePrev = false;
+        f->vel = ccp(0.f, 0.f);
 
         vanta::g_hold1 = false;
         vanta::g_hold2 = false;
@@ -250,6 +255,41 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
     }
 
+    // faded blocks keep a thin outline so the level stays readable
+    void vantaDrawOutlines(CCDrawNode* node) {
+        float px = m_player1->getPositionX();
+        float k = 1.f - vanta::objOpacity();
+        for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
+            float x = obj->getPositionX();
+            if (x < px - 260.f || x > px + 700.f) continue;
+            auto t = obj->m_objectType;
+            if (t == GameObjectType::Decoration || !vanta::objAffects(t)) continue;
+            CCRect r = obj->getObjectRect();
+            if (r.size.width < 1.f || r.size.height < 1.f) continue;
+            vanta::strokeBox(node, r, 0.f, 0.8f, ccColor4F{1.f, 1.f, 1.f, 0.35f * k});
+        }
+    }
+
+    // block grid (30 units) for counting jumps
+    void vantaDrawGrid(CCDrawNode* node) {
+        float px = m_player1->getPositionX();
+        float py = m_player1->getPositionY();
+        float x0 = std::floor((px - 260.f) / 30.f) * 30.f;
+        float x1 = px + 700.f;
+        float y0 = std::floor((py - 210.f) / 30.f) * 30.f;
+        float y1 = py + 210.f;
+        for (float x = x0; x <= x1; x += 30.f) {
+            bool major = (std::lround(x / 30.f) % 5) == 0;
+            node->drawSegment(ccp(x, y0), ccp(x, y1), major ? 0.5f : 0.3f,
+                ccColor4F{1.f, 1.f, 1.f, major ? 0.14f : 0.06f});
+        }
+        for (float y = y0; y <= y1; y += 30.f) {
+            bool major = (std::lround(y / 30.f) % 5) == 0;
+            node->drawSegment(ccp(x0, y), ccp(x1, y), major ? 0.5f : 0.3f,
+                ccColor4F{1.f, 1.f, 1.f, major ? 0.14f : 0.06f});
+        }
+    }
+
     // styled hitboxes for blocks, hazards and special objects near the player
     void vantaDrawObjects(CCDrawNode* node) {
         float px = m_player1->getPositionX();
@@ -287,15 +327,21 @@ class $modify(VantaPlayLayer, PlayLayer) {
             f->dim->setVisible(a > 0);
         }
 
-        // building opacity: re-apply when the setting changes
-        int oi = vanta::getIndex("obj-opacity");
+        // building opacity
+        float opK = vanta::objOpacity();
+        int opMode = vanta::getIndex("obj-mode");
+        int oi = (int)(opK * 100.f) * 100 + vanta::getIndex("obj-target") * 10 + opMode;
         if (oi != f->objOpIdx) {
             f->objOpIdx = oi;
             for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
-                if (obj->m_objectType == GameObjectType::Solid ||
-                    obj->m_objectType == GameObjectType::Decoration) {
-                    obj->setOpacity(255);
-                }
+                if (vanta::objAffects(obj->m_objectType)) obj->setOpacity(255);
+            }
+        } else if (opK < 1.f && opMode != 0) {
+            float ppx = m_player1->getPositionX();
+            for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
+                float ox = obj->getPositionX();
+                if (ox < ppx - 220.f || ox > ppx + 220.f) continue;
+                if (vanta::objAffects(obj->m_objectType)) obj->setOpacity(255);
             }
         }
 
@@ -337,6 +383,13 @@ class $modify(VantaPlayLayer, PlayLayer) {
         float rdt = CCDirector::get()->getDeltaTime();
         vanta::g_anim += rdt;
 
+        CCPoint cNow = vanta::centerOf(m_player1->getObjectRect());
+        if (f->havePrev) {
+            f->vel = ccp(cNow.x - f->prevC.x, cNow.y - f->prevC.y);
+        }
+        f->prevC = cNow;
+        f->havePrev = true;
+
         // hitboxes: everything here only shows when Show Hitboxes is on
         bool master = vanta::isOn("show-hitbox");
         bool trailOn = vanta::isOn("hitbox-trail");
@@ -357,6 +410,12 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
         if (f->trailNode) {
             f->trailNode->clear();
+            if (vanta::isOn("obj-outline") && vanta::objOpacity() < 1.f) {
+                this->vantaDrawOutlines(f->trailNode);
+            }
+            if (master && vanta::isOn("hb-grid")) {
+                this->vantaDrawGrid(f->trailNode);
+            }
             if (master && vanta::isOn("hb-objects")) {
                 this->vantaDrawObjects(f->trailNode);
             }
@@ -387,6 +446,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
             if (visible && dead && f->hasDeath && vanta::isOn("trail-deathmark")) {
                 vanta::drawDeath(f->trailNode, f->deathRect, m_player1->getObjectRect());
+            }
+            if (master && vanta::isOn("hb-velocity") && !dead) {
+                vanta::drawArrow(f->trailNode, cNow, f->vel);
             }
             if (master && animOn) {
                 vanta::drawFx(f->trailNode, f->fx, rdt);
@@ -445,59 +507,16 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 if (vanta::isOn("label-time")) s += fmt::format("Time: {:.2f}s\n", f->time);
                 if (vanta::isOn("label-attempt")) s += fmt::format("Attempt: {}\n", (int)m_attempts);
                 if (vanta::isOn("label-percent")) s += fmt::format("Percent: {:.2f}%\n", this->getCurrentPercent());
+                if (vanta::isOn("label-xy")) {
+                    s += fmt::format("X: {:.1f}  Y: {:.1f}\n", m_player1->getPositionX(), m_player1->getPositionY());
+                }
+                if (vanta::isOn("label-vel")) {
+                    s += fmt::format("Vel Y: {:.1f}\n", rdt > 0.f ? f->vel.y / rdt : 0.f);
+                }
 
                 if (vanta::isOn("noclip")) {
                     if (vanta::isOn("label-nc-acc")) {
                         float acc = f->ncFrames > 0
                             ? 100.f * float(f->ncFrames - f->ncHitFrames) / float(f->ncFrames)
                             : 100.f;
-                        s += fmt::format("NC Acc: {:.2f}%\n", acc);
-                    }
-                    if (vanta::isOn("label-nc-deaths")) {
-                        s += fmt::format("NC Deaths: {}\n", f->ncDeaths);
-                    }
-                }
-
-                if (vanta::isOn("label-macro")) {
-                    int mode = vanta::macroMode();
-                    if (mode == 1) {
-                        s += fmt::format("Macro: Recording ({})\n", vanta::g_macro.size());
-                    } else if (mode == 2) {
-                        s += fmt::format("Macro: Playing {}/{}\n", vanta::g_playIndex, vanta::g_macro.size());
-                    }
-                }
-
-                f->label->setVisible(true);
-                f->label->setString(s.c_str());
-                f->label->setScale(0.35f * vanta::labelScale());
-                f->label->setOpacity((GLubyte)(255.f * vanta::labelOpacity()));
-                f->label->setColor(vanta::labelColor());
-
-                int pos = vanta::getIndex("label-pos");
-                float pad = 6.f;
-                switch (pos) {
-                    case 1:
-                        f->label->setAnchorPoint({1.f, 1.f});
-                        f->label->setAlignment(kCCTextAlignmentRight);
-                        f->label->setPosition({win.width - pad, win.height - pad});
-                        break;
-                    case 2:
-                        f->label->setAnchorPoint({0.f, 0.f});
-                        f->label->setAlignment(kCCTextAlignmentLeft);
-                        f->label->setPosition({pad, pad});
-                        break;
-                    case 3:
-                        f->label->setAnchorPoint({1.f, 0.f});
-                        f->label->setAlignment(kCCTextAlignmentRight);
-                        f->label->setPosition({win.width - pad, pad});
-                        break;
-                    default:
-                        f->label->setAnchorPoint({0.f, 1.f});
-                        f->label->setAlignment(kCCTextAlignmentLeft);
-                        f->label->setPosition({26.f, win.height - pad});
-                        break;
-                }
-            }
-        }
-    }
-};
+                        s += fmt::format(
