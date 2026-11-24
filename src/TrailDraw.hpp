@@ -221,6 +221,24 @@ inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
     }
 }
 
+// ---------- velocity arrow ----------
+inline void drawArrow(CCDrawNode* n, CCPoint from, CCPoint vel) {
+    float len = std::sqrt(vel.x * vel.x + vel.y * vel.y);
+    if (len < 0.05f) return;
+    CCPoint to = ccp(from.x + vel.x * 8.f, from.y + vel.y * 8.f);
+    ccColor4F c{1.f, 0.95f, 0.4f, 0.95f};
+    n->drawSegment(from, to, 1.2f, c);
+    float dx = vel.x / len;
+    float dy = vel.y / len;
+    float a = 2.6f;
+    float ca = std::cos(a);
+    float sa = std::sin(a);
+    CCPoint h1 = ccp(to.x + (dx * ca - dy * sa) * 6.f, to.y + (dx * sa + dy * ca) * 6.f);
+    CCPoint h2 = ccp(to.x + (dx * ca + dy * sa) * 6.f, to.y + (-dx * sa + dy * ca) * 6.f);
+    n->drawSegment(to, h1, 1.2f, c);
+    n->drawSegment(to, h2, 1.2f, c);
+}
+
 // ---------- hitbox trail ----------
 inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2, bool dead) {
     size_t n = pts.size();
@@ -230,6 +248,7 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     bool inside = isOn("trail-inside");
     bool hold = isOn("trail-hold");
     bool smart = isOn("trail-smart");
+    bool motion = isOn("trail-motion");
     bool an = animOn();
     ccColor4F base = trailColor(p2);
     ccColor4F ins = colorOf("trail-color-inside");
@@ -241,6 +260,7 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     float pulseW = std::max(4.f, float(n) * 0.06f);
 
     CCPoint prev = ccp(0.f, 0.f);
+    CCRect prevR;
     bool havePrev = false;
     CCPoint lastBox = ccp(0.f, 0.f);
     bool haveBox = false;
@@ -257,14 +277,30 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
         ccColor4F c = (hold && pts[i].hold) ? holdC : base;
         CCPoint ctr = centerOf(r);
 
-        // centre line: shows the exact path frame by frame
         if (havePrev) {
-            float w = ((style == 1) ? 0.6f + 1.2f * k : 0.7f) * (1.f + 0.8f * boost);
-            node->drawSegment(prev, ctr, w, withA(c, 0.55f * fa));
+            ccColor4F lc = c;
+            if (motion) {
+                float dy = ctr.y - prev.y;
+                if (dy > 0.4f) lc = ccColor4F{0.3f, 0.9f, 1.f, 1.f};
+                else if (dy < -0.4f) lc = ccColor4F{1.f, 0.55f, 0.2f, 1.f};
+                else lc = ccColor4F{1.f, 1.f, 1.f, 1.f};
+            }
+            float w = ((style == 1 || motion) ? 0.6f + 1.2f * k : 0.7f) * (1.f + 0.8f * boost);
+            node->drawSegment(prev, ctr, w, withA(lc, 0.6f * fa));
+
+            if (style == 3) {
+                CCPoint q[4] = {
+                    ccp(prev.x, prevR.getMinY()), ccp(ctr.x, r.getMinY()),
+                    ccp(ctr.x, r.getMaxY()), ccp(prev.x, prevR.getMaxY())
+                };
+                node->drawPolygon(q, 4, withA(c, 0.30f * fa), 0.f, ccColor4F{0.f, 0.f, 0.f, 0.f});
+                node->drawSegment(q[0], q[1], 0.8f, withA(c, 0.8f * fa));
+                node->drawSegment(q[3], q[2], 0.8f, withA(c, 0.8f * fa));
+            }
         }
 
-        bool drawBox = true;
-        if (smart && haveBox && i + 1 < n) {
+        bool drawBox = (style != 3) || (i + 1 == n);
+        if (drawBox && smart && haveBox && i + 1 < n) {
             float minD = std::max(r.size.width, r.size.height) * 0.75f;
             float dx = ctr.x - lastBox.x;
             float dy = ctr.y - lastBox.y;
@@ -276,22 +312,21 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
             if (inside) {
                 fillBox(node, r, 0.f, withA(ins, 0.28f * fa));
             }
-            if (style == 0) {
-                strokeBox(node, r, 0.f, tt, withA(c, fa));
-            } else if (style == 1) {
-                if (i + 80 >= n || boost > 0.f) {
+            if (style == 2) {
+                CCRect g = scaledRect(r, 0.45f + 0.55f * k);
+                fillBox(node, g, 0.f, withA(c, 0.35f * fa));
+            } else {
+                if (style == 1 && (i + 80 >= n || boost > 0.f)) {
                     strokeBox(node, r, 1.f, tt * 3.f, withA(c, 0.12f * fa));
                 }
                 strokeBox(node, r, 0.f, tt, withA(c, fa));
-            } else {
-                CCRect g = scaledRect(r, 0.45f + 0.55f * k);
-                fillBox(node, g, 0.f, withA(c, 0.35f * fa));
             }
             lastBox = ctr;
             haveBox = true;
         }
 
         prev = ctr;
+        prevR = r;
         havePrev = true;
     }
 
