@@ -15,6 +15,14 @@ protected:
         if (!Popup::init(480.f, 250.f)) return false;
         this->setTitle("VantaMenu");
 
+        // grab bar: only the top strip of the window drags it
+        auto grab = CCScale9Sprite::create("square02b_001.png");
+        grab->setContentSize({46.f, 4.f});
+        grab->setColor({150, 150, 170});
+        grab->setOpacity(160);
+        grab->setPosition({m_size.width / 2.f, m_size.height - 7.f});
+        m_mainLayer->addChild(grab, 5);
+
         // restore the position the menu was left in
         m_origin = m_mainLayer->getPosition();
         this->applyOffset(
@@ -252,7 +260,7 @@ protected:
     bool ccTouchBegan(CCTouch* t, CCEvent* e) override {
         if (!vanta::isOn("menu-lock")) {
             CCPoint local = m_mainLayer->convertToNodeSpace(t->getLocation());
-            if (local.x >= 0.f && local.x <= m_size.width && local.y >= 0.f && local.y <= m_size.height) {
+            if (local.x >= 0.f && local.x <= m_size.width && local.y >= m_size.height - 34.f && local.y <= m_size.height) {
                 m_drag = true;
                 m_lastTouch = t->getLocation();
             }
