@@ -73,6 +73,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
         int ncDeaths = 0;
         bool hitNow = false;
         bool hitPrev = false;
+        CCRect deathRect;
+        bool hasDeath = false;
+        int frameCounter = 0;
+        int objOpIdx = -1;
     };
 
     // Auto LDM: runs before the level loads
@@ -192,6 +196,8 @@ class $modify(VantaPlayLayer, PlayLayer) {
         f->ncDeaths = 0;
         f->hitNow = false;
         f->hitPrev = false;
+        f->hasDeath = false;
+        f->frameCounter = 0;
 
         vanta::g_hold1 = false;
         vanta::g_hold2 = false;
@@ -213,6 +219,10 @@ class $modify(VantaPlayLayer, PlayLayer) {
         if (vanta::isOn("noclip") && obj != m_anticheatSpike) {
             m_fields->hitNow = true;
             return;
+        }
+        if (obj && obj != m_anticheatSpike) {
+            m_fields->deathRect = obj->getObjectRect();
+            m_fields->hasDeath = true;
         }
         PlayLayer::destroyPlayer(player, obj);
 
@@ -236,6 +246,18 @@ class $modify(VantaPlayLayer, PlayLayer) {
             GLubyte a = vanta::dimAlpha();
             f->dim->setOpacity(a);
             f->dim->setVisible(a > 0);
+        }
+
+        // building opacity: re-apply when the setting changes
+        int oi = vanta::getIndex("obj-opacity");
+        if (oi != f->objOpIdx) {
+            f->objOpIdx = oi;
+            for (auto obj : CCArrayExt<GameObject*>(m_objects)) {
+                if (obj->m_objectType == GameObjectType::Solid ||
+                    obj->m_objectType == GameObjectType::Decoration) {
+                    obj->setOpacity(255);
+                }
+            }
         }
 
         // noclip stats
@@ -273,22 +295,25 @@ class $modify(VantaPlayLayer, PlayLayer) {
             }
         }
 
-        // styled player hitbox + trail
-        bool showHb = vanta::isOn("show-hitbox");
-        bool showPl = vanta::isOn("hb-player");
+        // hitboxes: everything here only shows when Show Hitboxes is on
+        bool master = vanta::isOn("show-hitbox");
+        bool trailOn = vanta::isOn("hitbox-trail");
+        bool deathTrail = vanta::isOn("trail-on-death") && dead;
+        bool visible = master || deathTrail;
         if (f->trailNode) {
             f->trailNode->clear();
-            if (vanta::isOn("hitbox-trail")) {
+            if (trailOn) {
                 if (!dead) {
                     size_t maxLen = (size_t)vanta::trailLength();
-                    f->trail1.push_back({m_player1->getObjectRect(), vanta::g_hold1});
+                    f->trail1.push_back({m_player1->getObjectRect(), vanta::g_hold1, f->frameCounter});
                     if (m_player2 && m_player2->isVisible()) {
-                        f->trail2.push_back({m_player2->getObjectRect(), vanta::g_hold2});
+                        f->trail2.push_back({m_player2->getObjectRect(), vanta::g_hold2, f->frameCounter});
                     }
+                    f->frameCounter++;
                     while (f->trail1.size() > maxLen) f->trail1.pop_front();
                     while (f->trail2.size() > maxLen) f->trail2.pop_front();
                 }
-                if (showHb || showPl || dead) {
+                if (visible) {
                     vanta::drawTrail(f->trailNode, f->trail1, false, dead);
                     vanta::drawTrail(f->trailNode, f->trail2, true, dead);
                 }
@@ -296,11 +321,14 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 f->trail1.clear();
                 f->trail2.clear();
             }
-            if (showPl) {
+            if (master && vanta::isOn("hb-player")) {
                 vanta::drawPlayerBox(f->trailNode, m_player1, false);
                 if (m_player2 && m_player2->isVisible()) {
                     vanta::drawPlayerBox(f->trailNode, m_player2, true);
                 }
+            }
+            if (visible && dead && f->hasDeath && vanta::isOn("trail-deathmark")) {
+                vanta::drawDeath(f->trailNode, f->deathRect, m_player1->getObjectRect());
             }
         }
 
