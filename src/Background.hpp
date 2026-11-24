@@ -31,6 +31,11 @@ protected:
         m_s.draw = CCDrawNode::create();
         this->addChild(m_s.draw, 1);
 
+        // second layer with additive blending: glows, embers, stars, aurora
+        m_s.add = CCDrawNode::create();
+        m_s.add->setBlendFunc(ccBlendFunc{GL_SRC_ALPHA, GL_ONE});
+        this->addChild(m_s.add, 2);
+
         g_bg = this;
         g_bgRefresh = []{
             if (g_bg) g_bg->refresh();
@@ -58,6 +63,7 @@ protected:
 
         m_grad->setVisible(t != 0);
         m_s.draw->setVisible(t != 0);
+        m_s.add->setVisible(t != 0);
         if (m_hide) m_hide->setVisible(t == 0);
 
         m_grad->setStartColor(tops[t]);
@@ -76,6 +82,7 @@ protected:
         m_s.bolt2.clear();
         m_s.flash = 0.f;
         m_s.draw->clear();
+        m_s.add->clear();
     }
 
     void update(float dtRaw) override {
@@ -83,6 +90,25 @@ protected:
         float dt = dtRaw * m_speed;
         m_s.t += dt;
         m_s.draw->clear();
+        m_s.add->clear();
+
+        static ccColor4F const skyB[9] = {
+            C(0.f, 0.f, 0.f, 1.f), C(0.55f, 0.12f, 0.02f, 1.f), C(0.55f, 0.68f, 0.85f, 1.f),
+            C(0.88f, 0.97f, 0.85f, 1.f), C(0.95f, 0.97f, 1.f, 1.f), C(1.f, 0.95f, 0.93f, 1.f),
+            C(0.04f, 0.16f, 0.18f, 1.f), C(0.2f, 0.1f, 0.32f, 1.f), C(0.38f, 0.42f, 0.5f, 1.f)
+        };
+        static ccColor4F const skyM[9] = {
+            C(0.f, 0.f, 0.f, 1.f), C(0.18f, 0.03f, 0.02f, 1.f), C(0.2f, 0.3f, 0.5f, 1.f),
+            C(0.62f, 0.85f, 0.97f, 1.f), C(0.45f, 0.78f, 0.98f, 1.f), C(1.f, 0.82f, 0.88f, 1.f),
+            C(0.02f, 0.07f, 0.15f, 1.f), C(0.07f, 0.04f, 0.2f, 1.f), C(0.22f, 0.25f, 0.32f, 1.f)
+        };
+        static ccColor4F const skyT[9] = {
+            C(0.f, 0.f, 0.f, 1.f), C(0.03f, 0.f, 0.f, 1.f), C(0.03f, 0.06f, 0.18f, 1.f),
+            C(0.3f, 0.62f, 0.95f, 1.f), C(0.1f, 0.45f, 0.9f, 1.f), C(0.85f, 0.65f, 0.85f, 1.f),
+            C(0.f, 0.02f, 0.07f, 1.f), C(0.f, 0.f, 0.06f, 1.f), C(0.08f, 0.09f, 0.13f, 1.f)
+        };
+        int th = std::max(0, std::min(8, m_s.theme));
+        skyBands(m_s, skyB[th], skyM[th], skyT[th]);
 
         float t = m_s.t;
         float wind = S(t * 0.35f) * 12.f + std::max(0.f, S(t * 0.9f + 1.f)) * 18.f;
@@ -115,8 +141,11 @@ protected:
             default: break;
         }
         vignette(m_s);
+        CCPoint drift = ccp(-W * 0.025f + S(t * 0.17f) * 5.f, -H * 0.025f + S(t * 0.13f + 1.f) * 3.f);
         m_s.draw->setScale(1.05f);
-        m_s.draw->setPosition(ccp(-W * 0.025f + S(t * 0.17f) * 5.f, -H * 0.025f + S(t * 0.13f + 1.f) * 3.f));
+        m_s.draw->setPosition(drift);
+        m_s.add->setScale(1.05f);
+        m_s.add->setPosition(drift);
     }
 
 public:
