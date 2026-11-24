@@ -515,8 +515,9 @@ class $modify(VantaPlayLayer, PlayLayer) {
                 }
 
                 if (vanta::isOn("noclip")) {
+                    float accPct = 100.f;
+                    if (f->ncFrames > 0) {
+                        accPct = 100.f * float(f->ncFrames - f->ncHitFrames) / float(f->ncFrames);
+                    }
                     if (vanta::isOn("label-nc-acc")) {
-                        float acc = f->ncFrames > 0
-                            ? 100.f * float(f->ncFrames - f->ncHitFrames) / float(f->ncFrames)
-                            : 100.f;
-                        s += fmt::format(
+                   
