@@ -16,6 +16,7 @@ inline std::vector<Feature> const& features() {
 
         // ---------- Hitbox ----------
         {"show-hitbox", "Show Hitboxes", "Master switch: nothing below shows without it.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
+        {"hb-anim", "Hitbox Animations", "Pulses, click rings, death shards, glow.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-objects", "Object Hitboxes", "Styled boxes: blue blocks, red hazards, green orbs.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-player", "Player Hitbox", "Styled player box (needs Show Hitboxes).", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-style", "Hitbox Style", "Classic = red outer, blue inner box.", "Hitbox", Kind::Cycle,
@@ -111,6 +112,7 @@ inline std::vector<Feature> const& features() {
                 m->setSavedValue<float>("speed-value", 1.f);
                 applySpeed();
             }},
+        {"fab-lock", "Lock Vanta Button", "Stops the Vanta button from being dragged.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"menu-lock", "Lock Menu Position", "Stops the menu window from being dragged.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"no-newbest-orbs", "No New Best Orbs", "Hides the orb reward on new best.", "Global", Kind::Toggle, {}, 0, nullptr},
         {"unlock-all", "Unlock All Icons", "Every icon and color unlocked.", "Global", Kind::Toggle, {}, 0, nullptr},
