@@ -1,7 +1,10 @@
 #pragma once
 #include "Features.hpp"
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <deque>
+#include <vector>
 
 namespace vanta {
 
@@ -10,6 +13,24 @@ struct TrailPt {
     bool hold = false;
     int frame = 0;
 };
+
+// animated effects: click rings, death rings and shards
+struct HbFx {
+    CCPoint p = ccp(0.f, 0.f);
+    CCPoint v = ccp(0.f, 0.f);
+    float age = 0.f;
+    float life = 0.4f;
+    float size = 20.f;
+    int kind = 0; // 0 = click ring, 1 = death ring, 2 = shard
+};
+
+inline bool animOn() {
+    return isOn("hb-anim");
+}
+
+inline float rnd(float a, float b) {
+    return a + (b - a) * (std::rand() / (float)RAND_MAX);
+}
 
 inline ccColor4F withA(ccColor4F c, float a) {
     return ccColor4F{c.r, c.g, c.b, a};
@@ -45,31 +66,92 @@ inline CCRect scaledRect(CCRect const& r, float k) {
     return CCRect(c.x - w * 0.5f, c.y - h * 0.5f, w, h);
 }
 
-// player hitbox: Classic (GD look), Neon or Glass
-inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c) {
+// ---------- effects ----------
+inline void spawnRing(std::vector<HbFx>& v, CCPoint p, int kind, float size, float life) {
+    HbFx e;
+    e.p = p;
+    e.kind = kind;
+    e.size = size;
+    e.life = life;
+    v.push_back(e);
+}
+
+inline void spawnShards(std::vector<HbFx>& v, CCPoint p) {
+    for (int i = 0; i < 18; i++) {
+        HbFx e;
+        e.p = p;
+        e.kind = 2;
+        float a = rnd(0.f, 6.2831853f);
+        float sp = rnd(60.f, 220.f);
+        e.v = ccp(std::cos(a) * sp, std::sin(a) * sp + 60.f);
+        e.size = rnd(1.5f, 4.f);
+        e.life = rnd(0.45f, 0.9f);
+        v.push_back(e);
+    }
+}
+
+inline void drawFx(CCDrawNode* n, std::vector<HbFx>& v, float dt) {
+    for (size_t i = 0; i < v.size();) {
+        auto& e = v[i];
+        e.age += dt;
+        if (e.age >= e.life) {
+            v.erase(v.begin() + i);
+            continue;
+        }
+        float k = e.age / e.life;
+        if (e.kind == 2) {
+            e.v.y -= 260.f * dt;
+            e.p.x += e.v.x * dt;
+            e.p.y += e.v.y * dt;
+            float s = e.size * (1.f - 0.6f * k);
+            n->drawDot(e.p, s, ccColor4F{1.f, 0.35f + 0.4f * (1.f - k), 0.2f, 1.f - k});
+        } else {
+            float ease = 1.f - (1.f - k) * (1.f - k);
+            float r = e.size * ease;
+            CCPoint pts[28];
+            for (int j = 0; j < 28; j++) {
+                float a = j * 6.2831853f / 28.f;
+                pts[j] = ccp(e.p.x + std::cos(a) * r, e.p.y + std::sin(a) * r);
+            }
+            ccColor4F c = (e.kind == 0)
+                ? ccColor4F{0.4f, 1.f, 0.7f, 1.f - k}
+                : ccColor4F{1.f, 0.25f, 0.25f, 1.f - k};
+            n->drawPolygon(pts, 28, ccColor4F{c.r, c.g, c.b, 0.08f * (1.f - k)}, 1.6f * (1.f - k) + 0.4f, c);
+        }
+        ++i;
+    }
+}
+
+// ---------- player hitbox: Classic (GD look), Neon or Glass ----------
+inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c, bool holding) {
     int style = getIndex("hb-style");
     float th = hbThick();
     float fill = hbFill();
+    bool an = animOn();
+    float br = an ? 0.85f + 0.15f * std::sin(g_anim * 5.f) : 1.f;
+    float hl = (an && holding) ? 1.f : 0.f;
     ccColor4F white{1.f, 1.f, 1.f, 1.f};
+    ccColor4F cyan{0.45f, 0.85f, 1.f, 0.95f};
 
     if (style == 0) {
         ccColor4F red{1.f, 0.12f, 0.12f, 1.f};
         ccColor4F blue{0.2f, 0.45f, 1.f, 1.f};
         CCRect inner = scaledRect(r, 0.5f);
-        fillBox(n, r, 0.f, withA(red, 0.10f + fill * 0.4f));
+        strokeBox(n, r, 1.2f, th * 2.6f, withA(red, 0.07f * br + 0.14f * hl));
+        fillBox(n, r, 0.f, withA(red, 0.10f + fill * 0.4f + 0.08f * hl));
         strokeBox(n, r, 0.f, th, withA(red, 0.95f));
-        fillBox(n, inner, 0.f, withA(blue, 0.2f + fill * 0.4f));
+        fillBox(n, inner, 0.f, withA(blue, 0.2f + fill * 0.4f + 0.1f * hl));
         strokeBox(n, inner, 0.f, th, withA(blue, 0.95f));
         n->drawDot(centerOf(r), 0.9f, withA(white, 0.8f));
     } else if (style == 1) {
-        strokeBox(n, r, 1.5f, th * 3.4f, withA(c, 0.10f));
-        strokeBox(n, r, 0.8f, th * 2.0f, withA(c, 0.22f));
+        strokeBox(n, r, 1.5f, th * 3.4f, withA(c, 0.10f * br + 0.12f * hl));
+        strokeBox(n, r, 0.8f, th * 2.0f, withA(c, 0.22f * br));
         fillBox(n, r, 0.f, withA(c, fill));
         strokeBox(n, r, 0.f, th, withA(c, 1.f));
-        strokeBox(n, r, -0.5f, th * 0.4f, withA(white, 0.7f));
-        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, ccColor4F{0.45f, 0.85f, 1.f, 0.95f});
+        strokeBox(n, r, -0.5f, th * 0.4f, withA(white, 0.7f + 0.3f * hl));
+        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, cyan);
     } else {
-        fillBox(n, r, 0.f, withA(c, 0.15f + fill));
+        fillBox(n, r, 0.f, withA(c, 0.15f + fill + 0.1f * hl));
         strokeBox(n, r, 0.f, th, withA(white, 0.9f));
         float x0 = r.getMinX();
         float x1 = r.getMaxX();
@@ -86,19 +168,19 @@ inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c) {
         n->drawSegment(ccp(x1, y1), ccp(x1 - L, y1), th, wc);
         n->drawSegment(ccp(x1, y1), ccp(x1, y1 - L), th, wc);
         n->drawSegment(ccp(x0 + 2.f, y1 - 1.5f), ccp(x1 - 2.f, y1 - 1.5f), 0.6f, withA(white, 0.4f));
-        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, ccColor4F{0.45f, 0.85f, 1.f, 0.95f});
+        strokeBox(n, scaledRect(r, 0.5f), 0.f, th, cyan);
     }
 }
 
-inline void drawPlayerBox(CCDrawNode* n, PlayerObject* p, bool p2) {
+inline void drawPlayerBox(CCDrawNode* n, PlayerObject* p, bool p2, bool holding) {
     if (!p) return;
     CCRect r = p->getObjectRect();
     ccColor4F c = colorOf("hb-color");
     if (p2) c = ccColor4F{c.g, c.b, c.r, 1.f};
-    styledBox(n, r, c);
+    styledBox(n, r, c, holding);
 }
 
-// analysis aids: frame ticks and press/release markers
+// ---------- analysis aids: frame ticks and press/release markers ----------
 inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
     size_t n = pts.size();
     if (n < 2) return;
@@ -139,7 +221,7 @@ inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
     }
 }
 
-// hitbox trail: centre line + clean boxes (Boxes / Neon / Ghost) + analysis markers
+// ---------- hitbox trail ----------
 inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2, bool dead) {
     size_t n = pts.size();
     if (n == 0) return;
@@ -148,10 +230,15 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     bool inside = isOn("trail-inside");
     bool hold = isOn("trail-hold");
     bool smart = isOn("trail-smart");
+    bool an = animOn();
     ccColor4F base = trailColor(p2);
     ccColor4F ins = colorOf("trail-color-inside");
     ccColor4F holdC = colorOf("trail-color-hold");
     float th = hbThick();
+
+    // a bright pulse that travels along the trail from tail to head
+    float pulseIdx = an ? std::fmod(g_anim * 0.9f, 1.f) * float(n) : -1000.f;
+    float pulseW = std::max(4.f, float(n) * 0.06f);
 
     CCPoint prev = ccp(0.f, 0.f);
     bool havePrev = false;
@@ -161,14 +248,19 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     for (size_t i = 0; i < n; i++) {
         float k = float(i + 1) / float(n);
         float fade = 0.12f + 0.88f * k;
+        float d = std::fabs(float(i) - pulseIdx);
+        float boost = d < pulseW ? 1.f - d / pulseW : 0.f;
+        float fa = std::min(1.f, fade + 0.5f * boost);
+        float tt = th * (1.f + 0.8f * boost);
+
         CCRect const& r = pts[i].r;
         ccColor4F c = (hold && pts[i].hold) ? holdC : base;
         CCPoint ctr = centerOf(r);
 
         // centre line: shows the exact path frame by frame
         if (havePrev) {
-            float w = (style == 1) ? 0.6f + 1.2f * k : 0.7f;
-            node->drawSegment(prev, ctr, w, withA(c, 0.55f * fade));
+            float w = ((style == 1) ? 0.6f + 1.2f * k : 0.7f) * (1.f + 0.8f * boost);
+            node->drawSegment(prev, ctr, w, withA(c, 0.55f * fa));
         }
 
         bool drawBox = true;
@@ -182,18 +274,18 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
         if (drawBox) {
             if (inside) {
-                fillBox(node, r, 0.f, withA(ins, 0.28f * fade));
+                fillBox(node, r, 0.f, withA(ins, 0.28f * fa));
             }
             if (style == 0) {
-                strokeBox(node, r, 0.f, th, withA(c, fade));
+                strokeBox(node, r, 0.f, tt, withA(c, fa));
             } else if (style == 1) {
-                if (i + 80 >= n) {
-                    strokeBox(node, r, 1.f, th * 3.f, withA(c, 0.12f * fade));
+                if (i + 80 >= n || boost > 0.f) {
+                    strokeBox(node, r, 1.f, tt * 3.f, withA(c, 0.12f * fa));
                 }
-                strokeBox(node, r, 0.f, th, withA(c, fade));
+                strokeBox(node, r, 0.f, tt, withA(c, fa));
             } else {
                 CCRect g = scaledRect(r, 0.45f + 0.55f * k);
-                fillBox(node, g, 0.f, withA(c, 0.35f * fade));
+                fillBox(node, g, 0.f, withA(c, 0.35f * fa));
             }
             lastBox = ctr;
             haveBox = true;
@@ -210,35 +302,45 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     }
 }
 
-// level object hitbox: kind 0 = solid (blue), 1 = hazard (red), 2 = special (green)
-inline void objectBox(CCDrawNode* n, CCRect const& r, int kind) {
+// ---------- level object hitbox: 0 = solid (blue), 1 = hazard (red), 2 = special (green) ----------
+inline void objectBox(CCDrawNode* n, CCRect const& r, int kind, float prox) {
     if (r.size.width < 1.f || r.size.height < 1.f) return;
     ccColor4F c = ccColor4F{0.25f, 0.55f, 1.f, 1.f};
     if (kind == 1) c = ccColor4F{1.f, 0.2f, 0.25f, 1.f};
     if (kind == 2) c = ccColor4F{0.25f, 1.f, 0.5f, 1.f};
 
+    bool an = animOn();
+    if (!an) prox = 0.f;
+    float pulse = (an && kind == 1) ? 0.85f + 0.15f * std::sin(g_anim * 6.f) : 1.f;
+
     int style = getIndex("hb-style");
-    float th = hbThick();
+    float th = hbThick() * (1.f + 0.6f * prox);
     float fill = hbFill();
 
+    // objects close to the player glow brighter
+    if (prox > 0.02f) {
+        strokeBox(n, r, 1.2f, th * 2.4f, withA(c, 0.22f * prox));
+    }
+
     if (style == 1) {
-        strokeBox(n, r, 0.8f, th * 2.2f, withA(c, 0.16f));
-        fillBox(n, r, 0.f, withA(c, fill * 0.7f));
+        strokeBox(n, r, 0.8f, th * 2.2f, withA(c, 0.16f * pulse));
+        fillBox(n, r, 0.f, withA(c, fill * 0.7f + 0.2f * prox));
         strokeBox(n, r, 0.f, th, withA(c, 1.f));
     } else if (style == 2) {
-        fillBox(n, r, 0.f, withA(c, 0.12f + fill * 0.5f));
+        fillBox(n, r, 0.f, withA(c, (0.12f + fill * 0.5f) * pulse + 0.2f * prox));
         strokeBox(n, r, 0.f, th, ccColor4F{1.f, 1.f, 1.f, 0.85f});
     } else {
-        fillBox(n, r, 0.f, withA(c, 0.10f + fill * 0.4f));
+        fillBox(n, r, 0.f, withA(c, (0.10f + fill * 0.4f) * pulse + 0.2f * prox));
         strokeBox(n, r, 0.f, th, withA(c, 0.95f));
     }
 }
 
 // highlights the object that killed the player
 inline void drawDeath(CCDrawNode* n, CCRect const& obj, CCRect const& pl) {
-    fillBox(n, obj, 1.5f, ccColor4F{1.f, 0.1f, 0.1f, 0.35f});
+    float p = animOn() ? 0.8f + 0.2f * std::sin(g_anim * 10.f) : 1.f;
+    fillBox(n, obj, 1.5f, ccColor4F{1.f, 0.1f, 0.1f, 0.35f * p});
     strokeBox(n, obj, 1.5f, 2.f, ccColor4F{1.f, 1.f, 1.f, 0.95f});
-    strokeBox(n, obj, 3.5f, 3.f, ccColor4F{1.f, 0.2f, 0.2f, 0.3f});
+    strokeBox(n, obj, 3.5f, 3.f, ccColor4F{1.f, 0.2f, 0.2f, 0.3f * p});
     n->drawSegment(centerOf(pl), centerOf(obj), 0.8f, ccColor4F{1.f, 1.f, 1.f, 0.6f});
 }
 
