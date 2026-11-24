@@ -213,4 +213,22 @@ inline void spawn(BgState& s, Particle& p, bool initial) {
     }
 }
 
+inline void vignette(BgState& s) {
+    ccColor4F k = C(0.f, 0.f, 0.f, 0.05f);
+    for (int i = 0; i < 8; i++) {
+        float d = (i + 1) * 16.f;
+        rect(s, -20.f, -20.f, d, s.H + 20.f, k);
+        rect(s, s.W - d, -20.f, s.W + 20.f, s.H + 20.f, k);
+        rect(s, -20.f, s.H - d, s.W + 20.f, s.H + 20.f, k);
+        rect(s, -20.f, -20.f, s.W + 20.f, d, k);
+    }
+}
+
+inline void haze(BgState& s, float y, float h, ccColor4F col) {
+    for (int i = 0; i < 6; i++) {
+        float hh = h * (1.f - i / 6.f);
+        rect(s, -20.f, y - hh * 0.5f, s.W + 20.f, y + hh * 0.5f, C(col.r, col.g, col.b, col.a * 0.2f));
+    }
+}
+
 }
