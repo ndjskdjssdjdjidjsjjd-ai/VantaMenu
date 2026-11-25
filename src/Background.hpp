@@ -5,6 +5,7 @@
 #include "BgThemes3.hpp"
 #include "BgThemes4.hpp"
 #include "BgProps.hpp"
+#include "BgReal.hpp"
 
 namespace vanta {
 
@@ -113,6 +114,8 @@ protected:
         float t = m_s.t;
         float wind = S(t * 0.35f) * 12.f + std::max(0.f, S(t * 0.9f + 1.f)) * 18.f;
 
+        drawBackdrop(m_s, wind);
+
         switch (m_s.theme) {
             case 1: themeFire(m_s, dt, wind); break;
             case 2: themeWinter(m_s, dt, wind); break;
@@ -126,6 +129,7 @@ protected:
         }
 
         drawProps(m_s, wind);
+        drawExtras(m_s, wind);
 
         // cinematic finish: horizon haze, vignette and a slow camera drift
         float W = m_s.W;
