@@ -6,16 +6,16 @@
     "mac": "2.2081"
   },
   "version": "v1.0.0",
-  "id": "yourname.vantamenu",
+  "id": "kaizmm.vantamenu",
   "name": "VantaMenu",
-  "developer": "YourName",
+  "developer": "kaizmm",
   "description": "A clean, cross-platform mod menu for Geometry Dash.",
-  "repository": "https://github.com/YourName/VantaMenu",
+  "repository": "https://github.com/kaizmm/VantaMenu",
   "issues": {
     "info": "Report bugs on GitHub.",
-    "url": "https://github.com/YourName/VantaMenu/issues"
+    "url": "https://github.com/kaizmm/VantaMenu/issues"
   },
-  "tags": ["interface", "utility", "customization"],
+  "tags": ["interface", "utility", "customization", "cheat"],
   "settings": {
     "menu-opacity": {
       "type": "float",
