@@ -6,55 +6,9 @@
 #include <deque>
 #include <vector>
 #include "TrailDraw.hpp"
+#include "Labels.hpp"
 
 using namespace geode::prelude;
-
-// ---------- Macro bot + CPS + hold state (input level) ----------
-class $modify(VantaBaseGameLayer, GJBaseGameLayer) {
-    void handleButton(bool down, int button, bool isPlayer1) {
-        auto pl = PlayLayer::get();
-        if (pl && static_cast<GJBaseGameLayer*>(pl) == this) {
-            int mode = vanta::macroMode();
-
-            if (mode == 2 && !vanta::g_injecting) return;
-
-            if (button == 1) {
-                if (isPlayer1) vanta::g_hold1 = down;
-                else vanta::g_hold2 = down;
-                if (down) {
-                    if (isPlayer1) vanta::g_click1 = true;
-                    else vanta::g_click2 = true;
-                }
-            }
-
-            if (down) vanta::registerClick();
-
-            if (mode == 1 && !vanta::g_injecting) {
-                vanta::g_macro.push_back({vanta::g_frame, down, button, isPlayer1});
-            }
-        }
-        GJBaseGameLayer::handleButton(down, button, isPlayer1);
-    }
-
-    void processCommands(float dt, bool isHalfTick, bool isLastTick) {
-        auto pl = PlayLayer::get();
-        if (pl && static_cast<GJBaseGameLayer*>(pl) == this) {
-            if (vanta::macroMode() == 2) {
-                while (vanta::g_playIndex < vanta::g_macro.size() &&
-                       vanta::g_macro[vanta::g_playIndex].frame <= vanta::g_frame) {
-                    auto a = vanta::g_macro[vanta::g_playIndex++];
-                    vanta::g_injecting = true;
-                    this->handleButton(a.down, a.button, a.p1);
-                    vanta::g_injecting = false;
-                }
-            }
-            GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
-            vanta::g_frame++;
-            return;
-        }
-        GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
-    }
-};
 
 class $modify(VantaPlayLayer, PlayLayer) {
     struct Fields {
@@ -498,26 +452,18 @@ class $modify(VantaPlayLayer, PlayLayer) {
         if (real > 0.f) f->fps = f->fps * 0.9f + (1.f / real) * 0.1f;
 
         if (f->label) {
-            if (!vanta::isOn("labels")) {
-                f->label->setVisible(false);
-            } else {
-                std::string s;
-                if (vanta::isOn("label-fps")) s += fmt::format("FPS: {}\n", (int)f->fps);
-                if (vanta::isOn("label-cps")) s += fmt::format("CPS: {}\n", vanta::cps());
-                if (vanta::isOn("label-time")) s += fmt::format("Time: {:.2f}s\n", f->time);
-                if (vanta::isOn("label-attempt")) s += fmt::format("Attempt: {}\n", (int)m_attempts);
-                if (vanta::isOn("label-percent")) s += fmt::format("Percent: {:.2f}%\n", this->getCurrentPercent());
-                if (vanta::isOn("label-xy")) {
-                    s += fmt::format("X: {:.1f}  Y: {:.1f}\n", m_player1->getPositionX(), m_player1->getPositionY());
-                }
-                if (vanta::isOn("label-vel")) {
-                    s += fmt::format("Vel Y: {:.1f}\n", rdt > 0.f ? f->vel.y / rdt : 0.f);
-                }
-
-                if (vanta::isOn("noclip")) {
-                    float accPct = 100.f;
-                    if (f->ncFrames > 0) {
-                        accPct = 100.f * float(f->ncFrames - f->ncHitFrames) / float(f->ncFrames);
-                    }
-                    if (vanta::isOn("label-nc-acc")) {
-                   
+            vanta::LabelData d;
+            d.fps = f->fps;
+            d.time = f->time;
+            d.attempts = (int)m_attempts;
+            d.percent = this->getCurrentPercent();
+            d.x = m_player1->getPositionX();
+            d.y = m_player1->getPositionY();
+            d.velY = rdt > 0.f ? f->vel.y / rdt : 0.f;
+            d.ncFrames = f->ncFrames;
+            d.ncHit = f->ncHitFrames;
+            d.ncDeaths = f->ncDeaths;
+            vanta::updateLabel(f->label, d, win);
+        }
+    }
+};
