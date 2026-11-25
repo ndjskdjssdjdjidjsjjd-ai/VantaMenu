@@ -15,14 +15,6 @@ protected:
         if (!Popup::init(480.f, 250.f)) return false;
         this->setTitle("VantaMenu");
 
-        // grab bar: only the top strip of the window drags it
-        auto grab = CCScale9Sprite::create("square02b_001.png");
-        grab->setContentSize({46.f, 4.f});
-        grab->setColor({150, 150, 170});
-        grab->setOpacity(160);
-        grab->setPosition({m_size.width / 2.f, m_size.height - 7.f});
-        m_mainLayer->addChild(grab, 5);
-
         // restore the position the menu was left in
         m_origin = m_mainLayer->getPosition();
         this->applyOffset(
