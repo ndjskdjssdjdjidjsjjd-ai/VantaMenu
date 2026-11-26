@@ -31,7 +31,7 @@ inline std::vector<Feature> const& features() {
             {"Boxes", "Neon", "Ghost", "Ribbon"}, 1, nullptr},
         {"trail-motion", "Motion Colors", "Cyan = rising, orange = falling.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
-            100.f, 1.f, 2000.f},
+            200.f, 1.f, 2000.f},
         {"trail-color", "Trail Color", "Normal trail color.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
         {"trail-markers", "Click Markers", "Green dot = press, red dot = release.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-deathmark", "Death Marker", "Highlights the object that killed you.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
