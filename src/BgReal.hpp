@@ -1,5 +1,6 @@
 #pragma once
 #include "BgCore.hpp"
+#include "BgRain.hpp"
 
 namespace vanta {
 
@@ -17,21 +18,6 @@ inline void ridgeLine(BgState& s, float base, float amp, float seed, float drift
     }
 }
 
-// a flock of birds in a V with flapping wings
-inline void birdFlock(BgState& s, float cy, float speed, float phase, int n, ccColor4F col) {
-    float cx = std::fmod(s.t * speed + phase, s.W + 240.f) - 120.f;
-    float yy = cy + 6.f * S(s.t * 0.5f + phase);
-    for (int k = 0; k < n; k++) {
-        int rank = (k + 1) / 2;
-        float side = (k % 2 == 0) ? 1.f : -1.f;
-        float bx = cx - rank * 9.f;
-        float by = yy + side * rank * 5.f;
-        float flap = S(s.t * 9.f + k * 0.7f) * 3.f;
-        seg(s, bx - 5.f, by + flap, bx, by, 1.1f, col);
-        seg(s, bx, by, bx + 5.f, by + flap, 1.1f, col);
-    }
-}
-
 // night city with lit windows
 inline void skyline(BgState& s) {
     float W = s.W, t = s.t;
@@ -45,6 +31,10 @@ inline void skyline(BgState& s) {
             float bw = 26.f + std::fmod(i * 37.1f + layer * 11.f, 22.f);
             float bh = 36.f + std::fmod(i * 53.7f + layer * 29.f, 80.f);
             rect(s, bx, base, bx + bw, base + bh, C(shade, shade + 0.01f, shade + 0.03f, 1.f));
+            if (layer == 0 && i == 5) {
+                float blink = std::max(0.f, S(t * 3.f));
+                glow(s, ccp(bx + bw * 0.5f, base + bh + 2.f), 8.f, C(1.f, 0.1f, 0.1f, 0.8f * blink), 3);
+            }
             if (layer == 1) continue;
             for (float wy = base + 6.f; wy < base + bh - 4.f; wy += 11.f) {
                 for (float wx = bx + 4.f; wx < bx + bw - 4.f; wx += 10.f) {
@@ -126,6 +116,7 @@ inline void drawBackdrop(BgState& s, float wind) {
             break;
         }
         case 8: {
+            rainClouds(s);
             skyline(s);
             break;
         }
@@ -185,7 +176,6 @@ inline void drawExtras(BgState& s, float wind) {
             break;
         }
         case 3: {
-            birdFlock(s, H * 0.74f, 22.f, 0.f, 7, C(0.2f, 0.22f, 0.25f, 0.8f));
             for (int i = 0; i < 3; i++) {
                 float cx = std::fmod(i * 320.f + t * 10.f, W + 400.f) - 200.f;
                 for (int j = -3; j <= 3; j++) {
@@ -206,7 +196,6 @@ inline void drawExtras(BgState& s, float wind) {
         }
         case 4: {
             fishJumps(s);
-            birdFlock(s, H * 0.6f, 30.f, 40.f, 5, C(1.f, 1.f, 1.f, 0.9f));
             break;
         }
         case 5: {
