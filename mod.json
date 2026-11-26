@@ -17,18 +17,10 @@
   },
   "tags": ["interface", "utility", "customization", "cheat"],
   "settings": {
-    "menu-opacity": {
-      "type": "float",
-      "name": "Menu Opacity",
-      "description": "Opacity of the menu window.",
-      "default": 0.9,
-      "min": 0.2,
-      "max": 1.0,
-      "control": { "slider": true }
-    },
-    "open-on-start": {
+    "hide-menu": {
       "type": "bool",
-      "name": "Open on Startup",
+      "name": "Hide Mod Menu",
+      "description": "Hides the Vanta button everywhere. Turn it off to bring the menu back.",
       "default": false
     }
   }
