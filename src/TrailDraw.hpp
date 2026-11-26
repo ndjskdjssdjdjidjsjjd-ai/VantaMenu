@@ -268,7 +268,7 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
     for (size_t i = 0; i < n; i++) {
         float k = float(i + 1) / float(n);
-        float fade = 0.12f + 0.88f * k;
+        float fade = 0.3f + 0.7f * k;
         float d = std::fabs(float(i) - pulseIdx);
         float boost = d < pulseW ? 1.f - d / pulseW : 0.f;
         float fa = std::min(1.f, fade + 0.5f * boost);
@@ -286,8 +286,9 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
                 else if (dy < -0.4f) lc = ccColor4F{1.f, 0.55f, 0.2f, 1.f};
                 else lc = ccColor4F{1.f, 1.f, 1.f, 1.f};
             }
-            float w = ((style == 1 || motion) ? 0.6f + 1.2f * k : 0.7f) * (1.f + 0.8f * boost);
-            node->drawSegment(prev, ctr, w, withA(lc, 0.6f * fa));
+            float w = (1.2f + 1.4f * k) * (1.f + 0.8f * boost);
+            node->drawSegment(prev, ctr, w + 1.6f, ccColor4F{0.f, 0.f, 0.f, 0.4f * fa});
+            node->drawSegment(prev, ctr, w, withA(lc, 0.9f * fa));
 
             if (style == 3) {
                 CCPoint q[4] = {
@@ -311,16 +312,17 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
         if (drawBox) {
             if (inside) {
-                fillBox(node, r, 0.f, withA(ins, 0.28f * fa));
+                fillBox(node, r, 0.f, withA(ins, 0.4f * fa));
             }
             if (style == 2) {
                 CCRect g = scaledRect(r, 0.45f + 0.55f * k);
-                fillBox(node, g, 0.f, withA(c, 0.35f * fa));
+                fillBox(node, g, 0.f, withA(c, 0.5f * fa));
             } else {
+                strokeBox(node, r, 0.f, tt * 2.4f, ccColor4F{0.f, 0.f, 0.f, 0.45f * fa});
                 if (style == 1 && (i + 80 >= n || boost > 0.f)) {
-                    strokeBox(node, r, 1.f, tt * 3.f, withA(c, 0.12f * fa));
+                    strokeBox(node, r, 1.f, tt * 3.f, withA(c, 0.16f * fa));
                 }
-                strokeBox(node, r, 0.f, tt, withA(c, fa));
+                strokeBox(node, r, 0.f, tt * 1.2f, withA(c, fa));
             }
             lastBox = ctr;
             haveBox = true;
@@ -333,6 +335,8 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
 
     drawMarkers(node, pts);
 
+    // the newest frame is always drawn crisp so you can see where you are
+    strokeBox(node, pts[n - 1].r, 0.f, th * 1.5f, ccColor4F{1.f, 1.f, 1.f, 0.95f});
     if (dead) {
         strokeBox(node, pts[n - 1].r, 2.f, th * 2.f, ccColor4F{1.f, 1.f, 1.f, 0.9f});
     }
