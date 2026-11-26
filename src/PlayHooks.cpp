@@ -42,26 +42,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
         int objOpIdx = -1;
     };
 
-    // Auto LDM: runs before the level loads
-    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
-        if (vanta::isOn("auto-ldm") && level) {
-            static bool changed = false;
-            static bool prev = false;
-            auto gm = GameManager::get();
-            if (level->m_lowDetailMode) {
-                if (!changed) {
-                    prev = gm->getGameVariable("0042");
-                    changed = true;
-                }
-                gm->setGameVariable("0042", true);
-            } else if (changed) {
-                gm->setGameVariable("0042", prev);
-                changed = false;
-            }
-        }
-        return PlayLayer::init(level, useReplay, dontCreateObjects);
-    }
-
     void showNewBest(bool newReward, int orbs, int diamonds, bool demonKey, bool gauntlet, bool special) {
         if (vanta::isOn("no-newbest-orbs")) {
             newReward = false;
@@ -224,26 +204,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
         }
     }
 
-    // block grid (30 units) for counting jumps
-    void vantaDrawGrid(CCDrawNode* node) {
-        float px = m_player1->getPositionX();
-        float py = m_player1->getPositionY();
-        float x0 = std::floor((px - 260.f) / 30.f) * 30.f;
-        float x1 = px + 700.f;
-        float y0 = std::floor((py - 210.f) / 30.f) * 30.f;
-        float y1 = py + 210.f;
-        for (float x = x0; x <= x1; x += 30.f) {
-            bool major = (std::lround(x / 30.f) % 5) == 0;
-            node->drawSegment(ccp(x, y0), ccp(x, y1), major ? 0.5f : 0.3f,
-                ccColor4F{1.f, 1.f, 1.f, major ? 0.14f : 0.06f});
-        }
-        for (float y = y0; y <= y1; y += 30.f) {
-            bool major = (std::lround(y / 30.f) % 5) == 0;
-            node->drawSegment(ccp(x0, y), ccp(x1, y), major ? 0.5f : 0.3f,
-                ccColor4F{1.f, 1.f, 1.f, major ? 0.14f : 0.06f});
-        }
-    }
-
     // styled hitboxes for blocks, hazards and special objects near the player
     void vantaDrawObjects(CCDrawNode* node) {
         float px = m_player1->getPositionX();
@@ -347,7 +307,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         // hitboxes: everything here only shows when Show Hitboxes is on
         bool master = vanta::isOn("show-hitbox");
         bool trailOn = vanta::isOn("hitbox-trail");
-        bool deathTrail = vanta::isOn("trail-on-death") && dead;
+        bool deathTrail = false;
         bool visible = master || deathTrail;
         bool animOn = vanta::isOn("hb-anim");
         if (vanta::g_click1) {
@@ -366,9 +326,6 @@ class $modify(VantaPlayLayer, PlayLayer) {
             f->trailNode->clear();
             if (vanta::isOn("obj-outline") && vanta::objOpacity() < 1.f) {
                 this->vantaDrawOutlines(f->trailNode);
-            }
-            if (master && vanta::isOn("hb-grid")) {
-                this->vantaDrawGrid(f->trailNode);
             }
             if (master && vanta::isOn("hb-objects")) {
                 this->vantaDrawObjects(f->trailNode);
