@@ -122,7 +122,7 @@ inline ccColor4F trailColor(bool p2) {
 }
 
 inline float hbThick() {
-    static float const v[] = {0.7f, 1.f, 1.7f};
+    static float const v[] = {1.2f, 1.8f, 2.8f};
     int i = getIndex("hb-thick");
     return v[(i >= 0 && i < 3) ? i : 1];
 }
