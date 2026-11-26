@@ -18,7 +18,6 @@ inline std::vector<Feature> const& features() {
         {"show-hitbox", "Show Hitboxes", "Master switch: nothing below shows without it.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
         {"hb-anim", "Hitbox Animations", "Pulses, click rings, death shards, glow.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-objects", "Object Hitboxes", "Styled boxes: blue blocks, red hazards, green orbs.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"hb-grid", "Block Grid", "Grid of blocks for counting jumps.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
         {"hb-velocity", "Velocity Arrow", "Arrow showing which way you move.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-player", "Player Hitbox", "Styled player box (needs Show Hitboxes).", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"hb-style", "Hitbox Style", "Classic = red outer, blue inner box.", "Hitbox", Kind::Cycle,
@@ -27,18 +26,14 @@ inline std::vector<Feature> const& features() {
             {"Thin", "Normal", "Thick"}, 1, nullptr},
         {"hb-fill", "Fill Opacity", "Fill inside the player box.", "Hitbox", Kind::Cycle,
             {"0%", "15%", "30%", "50%"}, 2, nullptr},
-        {"hb-color", "Hitbox Color", "Color for Neon and Glass styles.", "Hitbox", Kind::Color, {}, 0xFF3B5C, nullptr},
         {"hitbox-trail", "Hitbox Trail", "Needs Show Hitboxes.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"trail-on-death", "Trail On Death", "Also show the trail after you die.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
         {"trail-style", "Trail Style", "Boxes, Neon or Ghost.", "Hitbox", Kind::Cycle,
             {"Boxes", "Neon", "Ghost", "Ribbon"}, 1, nullptr},
-        {"trail-smart", "Smart Spacing", "Skips overlapping boxes so the trail stays clean.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-motion", "Motion Colors", "Cyan = rising, orange = falling.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-length-value", "Trail Length", "Frames the trail keeps (1-2000).", "Hitbox", Kind::Number, {}, 0, nullptr,
             100.f, 1.f, 2000.f},
         {"trail-color", "Trail Color", "Normal trail color.", "Hitbox", Kind::Color, {}, 0x4DE6FF, nullptr},
         {"trail-markers", "Click Markers", "Green dot = press, red dot = release.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
-        {"trail-ticks", "Frame Ticks", "Tick every 10 frames, tall tick every 60.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-deathmark", "Death Marker", "Highlights the object that killed you.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-inside", "Inside Trail", "Fills the inside of the trail.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-color-inside", "Inside Trail Color", "Color of the inside fill.", "Hitbox", Kind::Color, {}, 0xFF2828, nullptr},
@@ -73,12 +68,6 @@ inline std::vector<Feature> const& features() {
             []{ applySpeed(); }, 1.f, 0.05f, 10.f},
 
         // ---------- Graphics ----------
-        {"gfx-ldm", "Low Detail Mode", "Turns the game's LDM on or off.", "Graphics", Kind::Toggle, {}, 0,
-            []{
-                if (g_booting) return;
-                GameManager::get()->setGameVariable("0042", isOn("gfx-ldm"));
-            }},
-        {"auto-ldm", "Auto LDM", "LDM on for levels that support it.", "Graphics", Kind::Toggle, {}, 0, nullptr},
         {"gfx-brightness", "Brightness", "Darken the level view.", "Graphics", Kind::Cycle,
             {"Normal", "-25%", "-50%", "-75%"}, 0, nullptr},
         {"obj-opacity-pct", "Building Opacity", "Type 0-100. Applies to the target below.", "Graphics", Kind::Number, {}, 0, nullptr,
@@ -90,9 +79,6 @@ inline std::vector<Feature> const& features() {
         {"obj-outline", "Outline Faded Blocks", "Thin outline so faded blocks stay readable.", "Graphics", Kind::Toggle, {}, 1, nullptr},
         {"fps-changer", "FPS Changer", "Type your FPS (0 = off).", "Graphics", Kind::Number, {}, 0,
             []{ applyFps(); }, 0.f, 0.f, 1000.f},
-        {"fps", "Show Stats", "Shows the built-in stats counter.", "Graphics", Kind::Toggle, {}, 0,
-            []{ CCDirector::get()->setDisplayStats(isOn("fps")); }},
-
         // ---------- Background ----------
         {"bg-theme", "Menu Background", "Blossom = cherry blossom.", "Background", Kind::Cycle,
             {"None", "Fire", "Winter", "Spring", "Summer", "Blossom", "Aurora", "Stars", "Rain"}, 0,
