@@ -70,13 +70,6 @@ inline void themeSpring(BgState& s, float dt, float wind) {
         dot(s, bx, by, 1.2f, C(0.15f, 0.1f, 0.1f, 1.f));
     }
 
-    for (int b = 0; b < 4; b++) {
-        float bx = std::fmod(t * (26.f + b * 4.f) + b * 170.f, W + 80.f) - 40.f;
-        float by = H * 0.62f + 20.f * S(t * 0.7f + b * 1.7f) + b * 14.f;
-        float fl = S(t * 9.f + b) * 5.f;
-        seg(s, bx - 9.f, by + fl, bx, by, 1.f, C(0.15f, 0.18f, 0.22f, 0.85f));
-        seg(s, bx, by, bx + 9.f, by + fl, 1.f, C(0.15f, 0.18f, 0.22f, 0.85f));
-    }
 
     for (auto& p : s.p) {
         p.y += p.vy * dt;
@@ -119,13 +112,6 @@ inline void themeSummer(BgState& s, float dt, float wind) {
         cloud(s, cx, H * (0.6f + 0.1f * S(i * 1.7f)), 50.f + 11.f * i, 0.9f);
     }
 
-    for (int b = 0; b < 3; b++) {
-        float bx = std::fmod(t * (34.f + b * 6.f) + b * 220.f, W + 80.f) - 40.f;
-        float by = H * 0.52f + b * 18.f + S(t * 0.9f + b) * 7.f;
-        float fl = S(t * 7.f + b * 2.f) * 5.f;
-        seg(s, bx - 10.f, by + fl, bx, by, 1.1f, C(0.12f, 0.16f, 0.24f, 0.9f));
-        seg(s, bx, by, bx + 10.f, by + fl, 1.1f, C(0.12f, 0.16f, 0.24f, 0.9f));
-    }
 
     for (int b = 0; b < 6; b++) {
         float k = b / 5.f;
