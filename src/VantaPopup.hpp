@@ -325,10 +325,16 @@ protected:
         float fy = Mod::get()->getSavedValue<float>("fab-fy", 1.f - 25.f / win.height);
         this->setPosition(this->clampPos(ccp(fx * win.width, fy * win.height)));
 
+        this->scheduleUpdate();
         this->setTouchMode(kCCTouchesOneByOne);
         this->setTouchPriority(-129);
         this->setTouchEnabled(true);
         return true;
+    }
+
+    // the "Hide Mod Menu" setting in Geode's mod settings hides the button everywhere
+    void update(float) override {
+        this->setVisible(!Mod::get()->getSettingValue<bool>("hide-menu"));
     }
 
     bool ccTouchBegan(CCTouch* t, CCEvent*) override {
