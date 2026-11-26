@@ -176,7 +176,7 @@ inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c, bool holding)
 inline void drawPlayerBox(CCDrawNode* n, PlayerObject* p, bool p2, bool holding) {
     if (!p) return;
     CCRect r = p->getObjectRect();
-    ccColor4F c = colorOf("hb-color");
+    ccColor4F c = ccColor4F{1.f, 0.23f, 0.36f, 1.f};
     if (p2) c = ccColor4F{c.g, c.b, c.r, 1.f};
     styledBox(n, r, c, holding);
 }
@@ -186,7 +186,7 @@ inline void drawMarkers(CCDrawNode* node, std::deque<TrailPt> const& pts) {
     size_t n = pts.size();
     if (n < 2) return;
     bool clicks = isOn("trail-markers");
-    bool ticks = isOn("trail-ticks");
+    bool ticks = false;
     if (!clicks && !ticks) return;
 
     ccColor4F green{0.2f, 1.f, 0.4f, 1.f};
@@ -248,7 +248,7 @@ inline void drawTrail(CCDrawNode* node, std::deque<TrailPt> const& pts, bool p2,
     int style = getIndex("trail-style");
     bool inside = isOn("trail-inside");
     bool hold = isOn("trail-hold");
-    bool smart = isOn("trail-smart");
+    bool smart = true;
     bool motion = isOn("trail-motion");
     bool an = animOn();
     ccColor4F base = trailColor(p2);
