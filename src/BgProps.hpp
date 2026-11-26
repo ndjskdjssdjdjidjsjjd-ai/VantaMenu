@@ -110,8 +110,8 @@ inline void propsStars(BgState& s) {
     float cx = std::fmod(t * 5.f + 200.f, W + 300.f) - 150.f;
     float cy = H * 0.72f - cx * 0.2f;
     glow(s, ccp(cx, cy), 8.f, C(0.8f, 0.95f, 1.f, 0.4f), 3);
-    seg(s, cx, cy, cx + 55.f, cy + 11.f, 2.2f, C(0.7f, 0.9f, 1.f, 0.18f));
-    seg(s, cx, cy, cx + 90.f, cy + 18.f, 1.2f, C(0.7f, 0.9f, 1.f, 0.10f));
+    seg(s, cx, cy, cx - 55.f, cy + 11.f, 2.2f, C(0.7f, 0.9f, 1.f, 0.18f));
+    seg(s, cx, cy, cx - 90.f, cy + 18.f, 1.2f, C(0.7f, 0.9f, 1.f, 0.10f));
 }
 
 inline void propsRain(BgState& s) {
