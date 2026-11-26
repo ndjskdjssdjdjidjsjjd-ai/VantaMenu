@@ -26,7 +26,7 @@ inline std::vector<Feature> const& features() {
         {"hb-thick", "Outline Thickness", "How thick the lines are.", "Hitbox", Kind::Cycle,
             {"Thin", "Normal", "Thick"}, 1, nullptr},
         {"hb-fill", "Fill Opacity", "Fill inside the player box.", "Hitbox", Kind::Cycle,
-            {"0%", "15%", "30%", "50%"}, 1, nullptr},
+            {"0%", "15%", "30%", "50%"}, 2, nullptr},
         {"hb-color", "Hitbox Color", "Color for Neon and Glass styles.", "Hitbox", Kind::Color, {}, 0xFF3B5C, nullptr},
         {"hitbox-trail", "Hitbox Trail", "Needs Show Hitboxes.", "Hitbox", Kind::Toggle, {}, 1, nullptr},
         {"trail-on-death", "Trail On Death", "Also show the trail after you die.", "Hitbox", Kind::Toggle, {}, 0, nullptr},
