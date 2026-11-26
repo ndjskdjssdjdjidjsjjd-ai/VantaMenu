@@ -10,10 +10,10 @@ inline void rainClouds(BgState& s) {
     float lit = 0.5f * fi;
     for (int layer = 0; layer < 3; layer++) {
         float base = 0.07f + 0.04f * layer;
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 7; i++) {
             float cx = std::fmod(i * 140.f + t * (5.f + layer * 4.f) + layer * 60.f, W + 320.f) - 160.f;
             float cy = H * (0.9f - layer * 0.07f) + 5.f * S(t * 0.2f + i + layer);
-            for (int k = 0; k < 5; k++) {
+            for (int k = 0; k < 4; k++) {
                 float px = cx + (k - 2) * 38.f;
                 float py = cy + S(k * 2.1f + i) * 8.f;
                 float r = 52.f + 14.f * S(k * 1.3f + i * 0.7f) + layer * 10.f;
@@ -30,7 +30,7 @@ inline void rainClouds(BgState& s) {
 inline void themeRainX(BgState& s, float dt, float wind) {
     float W = s.W, H = s.H, t = s.t;
     float groundY = 14.f;
-    float slant = wind * 3.f;
+    float slant = wind * 1.2f;
 
     // faint sheets of distant rain
     for (int i = 0; i < 6; i++) {
@@ -87,8 +87,8 @@ inline void themeRainX(BgState& s, float dt, float wind) {
         bool isFar = p.z < 0.62f;
         bool isNear = p.z >= 0.85f;
         float len = isFar ? 0.02f : (isNear ? 0.045f : 0.03f);
-        float w = isFar ? 0.4f : (isNear ? 0.95f : 0.6f);
-        float a = isFar ? 0.14f : (isNear ? 0.42f : 0.26f);
+        float w = isFar ? 0.5f : (isNear ? 1.2f : 0.8f);
+        float a = isFar ? 0.22f : (isNear ? 0.6f : 0.4f);
         a += 0.3f * fi * p.z;
         seg(s, p.x, p.y, p.x - vx * len, p.y - p.vy * len, w, C(0.78f, 0.86f, 1.f, std::min(0.85f, a)));
     }
