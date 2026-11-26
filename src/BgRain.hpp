@@ -84,11 +84,11 @@ inline void themeRainX(BgState& s, float dt, float wind) {
             spawn(s, p, false);
             continue;
         }
-        bool far = p.z < 0.62f;
-        bool near = p.z >= 0.85f;
-        float len = far ? 0.02f : (near ? 0.045f : 0.03f);
-        float w = far ? 0.4f : (near ? 0.95f : 0.6f);
-        float a = far ? 0.14f : (near ? 0.42f : 0.26f);
+        bool isFar = p.z < 0.62f;
+        bool isNear = p.z >= 0.85f;
+        float len = isFar ? 0.02f : (isNear ? 0.045f : 0.03f);
+        float w = isFar ? 0.4f : (isNear ? 0.95f : 0.6f);
+        float a = isFar ? 0.14f : (isNear ? 0.42f : 0.26f);
         a += 0.3f * fi * p.z;
         seg(s, p.x, p.y, p.x - vx * len, p.y - p.vy * len, w, C(0.78f, 0.86f, 1.f, std::min(0.85f, a)));
     }
