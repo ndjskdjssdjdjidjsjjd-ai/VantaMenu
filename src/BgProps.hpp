@@ -126,6 +126,11 @@ inline void propsRain(BgState& s) {
     glow(s, ccp(lx + 14.f, gy + 62.f), 44.f, C(1.f, 0.9f, 0.6f, 0.28f * fl), 5);
     dot(s, lx + 14.f, gy + 63.f, 3.2f, C(1.f, 0.97f, 0.8f, 1.f));
     seg(s, lx - 10.f, gy - 3.f, lx + 38.f, gy - 3.f, 3.f, C(1.f, 0.9f, 0.6f, 0.25f * fl));
+    for (int i = 0; i < 26; i++) {
+        float x = lx - 14.f + std::fmod(i * 13.7f, 56.f);
+        float y = gy + 66.f - std::fmod(t * 380.f + i * 27.3f, 66.f);
+        segA(s, x, y, x + 1.f, y + 7.f, 0.8f, C(1.f, 0.95f, 0.75f, 0.35f * fl));
+    }
 }
 
 inline void drawProps(BgState& s, float wind) {
