@@ -6,6 +6,8 @@
 #include "BgThemes4.hpp"
 #include "BgProps.hpp"
 #include "BgReal.hpp"
+#include "BgSpring.hpp"
+#include "BgBlossom.hpp"
 
 namespace vanta {
 
@@ -56,7 +58,7 @@ protected:
             {0, 0, 0}, {120, 30, 0}, {70, 110, 160}, {190, 245, 170}, {190, 235, 255},
             {255, 238, 243}, {8, 35, 45}, {25, 12, 55}, {65, 75, 95}
         };
-        static int const base[] = {0, 70, 110, 40, 30, 50, 60, 120, 150};
+        static int const base[] = {0, 70, 110, 60, 30, 80, 60, 120, 230};
         static float const dens[] = {0.5f, 1.f, 1.8f};
 
         if (t < 0 || t > 8) t = 0;
@@ -119,12 +121,12 @@ protected:
         switch (m_s.theme) {
             case 1: themeFire(m_s, dt, wind); break;
             case 2: themeWinter(m_s, dt, wind); break;
-            case 3: themeSpring(m_s, dt, wind); break;
+            case 3: themeSpringX(m_s, dt, wind); break;
             case 4: themeSummer(m_s, dt, wind); break;
-            case 5: themeBlossom(m_s, dt, wind); break;
+            case 5: themeBlossomX(m_s, dt, wind); break;
             case 6: themeAurora(m_s); break;
             case 7: themeStars(m_s, dt); break;
-            case 8: themeRain(m_s, dt, wind); break;
+            case 8: themeRainX(m_s, dt, wind); break;
             default: break;
         }
 
@@ -145,7 +147,9 @@ protected:
             default: break;
         }
         vignette(m_s);
-        CCPoint drift = ccp(-W * 0.025f + S(t * 0.17f) * 5.f, -H * 0.025f + S(t * 0.13f + 1.f) * 3.f);
+        float shake = (m_s.theme == 8) ? m_s.flash * 3.f : 0.f;
+        CCPoint drift = ccp(-W * 0.025f + S(t * 0.17f) * 5.f + S(t * 70.f) * shake,
+                            -H * 0.025f + S(t * 0.13f + 1.f) * 3.f + S(t * 83.f) * shake);
         m_s.draw->setScale(1.05f);
         m_s.draw->setPosition(drift);
         m_s.add->setScale(1.05f);
