@@ -307,7 +307,7 @@ class $modify(VantaPlayLayer, PlayLayer) {
         // hitboxes: everything here only shows when Show Hitboxes is on
         bool master = vanta::isOn("show-hitbox");
         bool trailOn = vanta::isOn("hitbox-trail");
-        bool deathTrail = false;
+        bool deathTrail = dead;
         bool visible = master || deathTrail;
         bool animOn = vanta::isOn("hb-anim");
         if (vanta::g_click1) {
