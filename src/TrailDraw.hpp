@@ -137,10 +137,11 @@ inline void styledBox(CCDrawNode* n, CCRect const& r, ccColor4F c, bool holding)
         ccColor4F red{1.f, 0.12f, 0.12f, 1.f};
         ccColor4F blue{0.2f, 0.45f, 1.f, 1.f};
         CCRect inner = scaledRect(r, 0.5f);
-        strokeBox(n, r, 1.2f, th * 2.6f, withA(red, 0.07f * br + 0.14f * hl));
-        fillBox(n, r, 0.f, withA(red, 0.10f + fill * 0.4f + 0.08f * hl));
+        strokeBox(n, r, 0.f, th * 2.6f, ccColor4F{0.f, 0.f, 0.f, 0.55f});
+        strokeBox(n, r, 1.2f, th * 2.6f, withA(red, 0.10f * br + 0.14f * hl));
+        fillBox(n, r, 0.f, withA(red, 0.18f + fill * 0.4f + 0.08f * hl));
         strokeBox(n, r, 0.f, th, withA(red, 0.95f));
-        fillBox(n, inner, 0.f, withA(blue, 0.2f + fill * 0.4f + 0.1f * hl));
+        fillBox(n, inner, 0.f, withA(blue, 0.3f + fill * 0.4f + 0.1f * hl));
         strokeBox(n, inner, 0.f, th, withA(blue, 0.95f));
         n->drawDot(centerOf(r), 0.9f, withA(white, 0.8f));
     } else if (style == 1) {
@@ -352,6 +353,9 @@ inline void objectBox(CCDrawNode* n, CCRect const& r, int kind, float prox) {
     float th = hbThick() * (1.f + 0.6f * prox);
     float fill = hbFill();
 
+    // dark halo so the box stays visible on any background
+    strokeBox(n, r, 0.f, th * 2.4f, ccColor4F{0.f, 0.f, 0.f, 0.55f});
+
     // objects close to the player glow brighter
     if (prox > 0.02f) {
         strokeBox(n, r, 1.2f, th * 2.4f, withA(c, 0.22f * prox));
@@ -362,10 +366,10 @@ inline void objectBox(CCDrawNode* n, CCRect const& r, int kind, float prox) {
         fillBox(n, r, 0.f, withA(c, fill * 0.7f + 0.2f * prox));
         strokeBox(n, r, 0.f, th, withA(c, 1.f));
     } else if (style == 2) {
-        fillBox(n, r, 0.f, withA(c, (0.12f + fill * 0.5f) * pulse + 0.2f * prox));
+        fillBox(n, r, 0.f, withA(c, (0.2f + fill * 0.5f) * pulse + 0.2f * prox));
         strokeBox(n, r, 0.f, th, ccColor4F{1.f, 1.f, 1.f, 0.85f});
     } else {
-        fillBox(n, r, 0.f, withA(c, (0.10f + fill * 0.4f) * pulse + 0.2f * prox));
+        fillBox(n, r, 0.f, withA(c, (0.18f + fill * 0.45f) * pulse + 0.2f * prox));
         strokeBox(n, r, 0.f, th, withA(c, 0.95f));
     }
 }
