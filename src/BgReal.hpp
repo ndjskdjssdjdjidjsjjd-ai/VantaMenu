@@ -36,8 +36,8 @@ inline void skyline(BgState& s) {
                 glow(s, ccp(bx + bw * 0.5f, base + bh + 2.f), 8.f, C(1.f, 0.1f, 0.1f, 0.8f * blink), 3);
             }
             if (layer == 1) continue;
-            for (float wy = base + 6.f; wy < base + bh - 4.f; wy += 11.f) {
-                for (float wx = bx + 4.f; wx < bx + bw - 4.f; wx += 10.f) {
+            for (float wy = base + 6.f; wy < base + bh - 4.f; wy += 13.f) {
+                for (float wx = bx + 4.f; wx < bx + bw - 4.f; wx += 12.f) {
                     float h = std::fabs(S(wx * 12.9898f + wy * 78.233f) * 43758.5453f);
                     h -= std::floor(h);
                     if (h < 0.55f) continue;
